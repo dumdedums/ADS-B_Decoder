@@ -12,43 +12,78 @@
 	In order to insure allignment with the message within the adsbFrame struct,
 	I have created a separate union of the message portion in all of its forms.
 
-	I have worries about how this will align within the adsbFrame struct,
-	I want to be able to paste the raw adsbFrame into the adsbFrame.frame,
-	then access individual parts without bit masking and shifting.
-	This is arguably greedy and it might be better and more compatible between compilers
-	and operating systems to do all the bit masking and shifting in the functions that handle it,
-	using helper functions or macro functions even.
-
 	Since the messages are sent MSB (Most Significant Bit) first,
-	I might have to completely reverse my ordering of struct variables.
 	Bit-fields in structs are usually ordered in the LSB first.
+	So I input the 112 bit raw data frame Little Endian,
+	then I reverse the order of the bit-fields so that they align correctly.
+
+	ADS-B version differences:
+	TC=28 added in ver 1
+	NUC (Navigational Uncertainty Categories) swapped in favor of NIC (Navigational Integrity Categories)
+	TC=28 changed in ver 2, NICb defined in Air Pos messages (TC=9-18)
+	NICa and NICc defined in TC=31
+
+	I probably will not worry about the navigational uncertainty/integrity,
+	because it requires knowing ADS-B versions of the transponder.
+	Part of the navigational uncertainty/integrity is encoded into the typecode,
+	which is why there are multiple type codes for certain messages.
 */
-union adsbMessage
+
+/*
+	subSpecFields
+	These are the specific fields for ground speed (gs), or airborne speed (as),
+	as they relate within the Airborne Velocity (av) struct and message type.
+*/
+
+union subSpecFields
 {
-	uint64_t me;	//Message (raw 51 bits without TC)
+	struct __attribute__((packed))
+	{
+		uint32_t vns	: 10;	//North-South velocity
+		uint32_t dns	: 1;	//N-S direction (0 South to North, 1 North to South)
+		uint32_t vew	: 10;	//E-W velocity
+		uint32_t dew	: 1;	//E-W direction (0 West to East, 1 East to West)
+	} gs;	//if subtype is 1, speed is decimal value - 1
+		//if st=2, speed is 4 * (dec value - 1)
+		//in knots
 
 	struct __attribute__((packed))
 	{
-		uint64_t cat	: 3;	//craft category is determined by both this and exact tc value
-		uint64_t c1	: 6;	//call sign chars
-		uint64_t c2	: 6;	//each char is the lower 6 bits
-		uint64_t c3	: 6;	//of an ASCII character
-		uint64_t c4	: 6;
-		uint64_t c5	: 6;
-		uint64_t c6	: 6;
-		uint64_t c7	: 6;
+		uint32_t as	: 10;	//speed = as - 1 or 4*(as-1) (0 means not available)
+		uint32_t t	: 1;	//type 0 = IAS, 1 = TAS
+		uint32_t hdg	: 10;	//heading = hdg * 360/1024 degrees
+		uint32_t sh	: 1;	//heading status (0 means hdg not available)
+	} as;	//st=4 is the same as st=2, airpseed is multiplied by 4.
+};
+
+union adsbMessage
+{
+	uint8_t me[7];	//Message (56 bits including TC)
+
+	struct __attribute__((packed))
+	{
 		uint64_t c8	: 6;
+		uint64_t c7	: 6;
+		uint64_t c6	: 6;
+		uint64_t c5	: 6;
+		uint64_t c4	: 6;
+		uint64_t c3	: 6;	//of an ASCII character
+		uint64_t c2	: 6;	//each char is the lower 6 bits
+		uint64_t c1	: 6;	//call sign chars
+		uint64_t cat	: 3;	//craft category is determined by both this and exact tc value
+		uint64_t tc	: 5;
 	} id;	//to be used if tc <= 4
 
 	struct __attribute__((packed))
 	{
-		uint64_t ss		: 2;	//surveillance status
-		uint64_t sas		: 1;	//single antenna flag
-		uint64_t alt		: 12;	//encoded altitude
-		uint64_t t		: 1;	//time
-		uint64_t f		: 1;	//CPR format (even frame or odd frame)
-		uint64_t lat-cpr	: 17;	//CPR encoded latitude
 		uint64_t lon-cpr	: 17;	//longitude
+		uint64_t lat-cpr	: 17;	//CPR encoded latitude
+		uint64_t f		: 1;	//CPR format (even frame or odd frame)
+		uint64_t t		: 1;	//time
+		uint64_t alt		: 12;	//encoded altitude
+		uint64_t saf		: 1;	//single antenna flag
+		uint64_t ss		: 2;	//surveillance status
+		uint64_t tc		: 5;
 	} ab;	//layout of message if of airborne position type
 		//used if tc is 9-18 or 20-22
 		//alt is baro if 9-18, GNSS alt 20-22
@@ -58,29 +93,50 @@ union adsbMessage
 	
 	struct __attribute__((packed))
 	{
-		uint64_t mov		: 7;	//movement (ground speed)
-		uint64_t s		: 1;	//ground track status (invalid or valid)
-		uint64_t trk		: 7;	//ground track (degrees) = 360*trk / 128
-		uint64_t t		: 1;	//time
-		uint64_t f		: 1;	//even or odd CPR format
-		uint64_t lat-cpr	: 17;	//latitude (calculated differently from airborne)
 		uint64_t lon-cpr	: 17;	//longitude
+		uint64_t lat-cpr	: 17;	//latitude (calculated differently from airborne)
+		uint64_t f		: 1;	//even or odd CPR format
+		uint64_t t		: 1;	//time
+		uint64_t trk		: 7;	//ground track (degrees) = 360*trk / 128
+		uint64_t s		: 1;	//ground track status (invalid or valid)
+		uint64_t mov		: 7;	//movement (ground speed)
+		uint64_t tc		: 5;
 	} sp;	//surface position tc 5-8
 
 	struct __attribute__((packed))
 	{
-		uint64_t st	: 3;	//subtypes 1 and 2 are ground speed, 3 and 4 are TAS or IAS
-		uint64_t ic	: 1;	//intent change flag
-		uint64_t ifr	: 1;	//IFR capability flag
-		uint64_t nuc	: 3;	//navigational uncertainty, different between ADS-B versions
-		uint64_t stsf	: 22;	//subtype specific info
-		uint64_t src	: 1;	//source for vertical rate (GNSS or Baro)
-		uint64_t svr	: 1;	//vertical rate sign bit
-		uint64_t vr	: 9;	//vertical rate
-		uint64_t res	: 2;
-		uint64_t sdif	: 1;	//sign bit for GNSS alt - Baro alt
 		uint64_t diff	: 7;	//GNSS - Baro alt (divided by 25ft)
+		uint64_t sdif	: 1;	//sign bit for GNSS alt - Baro alt
+		uint64_t res	: 2;
+		uint64_t vr	: 9;	//vertical rate
+		uint64_t svr	: 1;	//vertical rate sign bit
+		uint64_t src	: 1;	//source for vertical rate (GNSS or Baro)
+		union subSpecFields	: 22;	//subtype specific info
+		uint64_t nuc	: 3;	//navigational uncertainty, different between ADS-B versions
+		uint64_t ifr	: 1;	//IFR capability flag
+		uint64_t ic	: 1;	//intent change flag
+		uint64_t st	: 3;	//subtypes 1 and 2 are ground speed, 3 and 4 are TAS or IAS
+		uint64_t tc	: 5;
 	} av;	//airborne velocities tc=19
+
+	struct __attribute__((packed))
+	{
+		uint64_t res	: 1;
+		uint64_t sils	: 1;	//SIL supplement bit
+		uint64_t hrd	: 1;	//Horizontal Reference Direction
+		uint64_t bai	: 1;	//Baro Alt Integrity (Track Angle on surface)
+		uint64_t sil	: 2;	//Source Integrity Level
+		uint64_t gva	: 2;	//Geometric Vertical Accuracy (unused on surface)
+		uint64_t nacp	: 4;	//Navigational Accuracy Category - position
+		uint64_t nica	: 1;	//NIC supplement - A
+		uint64_t ver	: 3;	//ADS-B version
+		uint64_t om	: 16;	//operational machine code
+		uint64_t cc	: 16;	//capacity class code
+		uint64_t st	: 3;	//subtype (0 airborne, 1 surface)
+		uint64_t tc	: 5;
+	} os;	//operational status tc=31
+		//ADS-B version 1 doesn't have SILS, ADS-B ver 0 is very different but unused
+		//we might not worry about decoding these messages
 };
 
 /*
@@ -125,15 +181,14 @@ union adsbMessage
 */
 union adsbFrame
 {
-	uint16_t frame[7];	//A broadcast frame is 112 bits long, or 16 bits * 7
+	uint8_t frame[14];	//A broadcast frame is 112 bits long, or 8 bits * 14
 
 	struct __attribute__((packed))
 	{
-		uint8_t df	: 5;	//Downlink Format
-		uint8_t ca	: 3;	//Transponder Capability
-		uint32_t icao	: 24;	//ICAO aircraft address
-		uint8_t tc	: 5;	//Type Code (type of message)
-		union adsbMessage : 51;	//Message (as described above)
 		uint32_t pi	: 24;	//Parity and Interrogator ID
+		union adsbMessage : 56;	//Message (as described above)
+		uint32_t icao	: 24;	//ICAO aircraft address
+		uint8_t ca	: 3;	//Transponder Capability
+		uint8_t df	: 5;	//Downlink Format
 	};
 };
