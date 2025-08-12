@@ -35,77 +35,58 @@ int getIdent(const union AdsbFrame *frame, char call[8], char type[8])
 			call[i] += 0x40;
 	}
 
-	switch(frame->id.tc)
-	{
-	case 2:
-		switch(frame->id.cat)
-		{
-		case 0:
-		case 2:
-			type = "UNOWEN";
-			break;
-		case 1:
-			type = "SEV";
-			break;
-		case 3:
-			type = "SSV";
-			break;
-		default:
-			type = "GRDOBS";
-		}
+	switch(frame->id.tc * 010 + frame->id.cat)
+	{				//tc * 8 + cat creates unique value for each craft category
+	case 021:
+		type = "SEV";		//Surface Emergency Vehicle
 		break;
-	case 3:
-		switch(frame->id.cat)
-		{
-		case 1:
-			type = "GLIDER";
-			break;
-		case 2:
-			type = "LTA";		//Lighter Than Air (hot air balloon)
-			break;
-		case 3:
-			type = "SKYDIV";
-			break;
-		case 4:
-			type = "ULTLIT";	//ultralight, hang or para glider
-			break;
-		case 6:
-			type = "UAV";
-			break;
-		case 7:
-			type = "SPACE";
-			break;
-		default:
-			type = "UNOWEN";
-		}
+	case 023:
+		type = "SSV";		//Surface Service Vehicle
 		break;
-	case 4:
-		switch(frame->id.cat)
-		{
-		case 1:
-			type = "LIGHT";		//sub 7000kg
-			break;
-		case 2:
-			type = "MED1";		//7000-34000kg
-			break;
-		case 3:
-			type = "MED2";		//34000-136000kg
-			break;
-		case 4:
-			type = "HVA";		//High Vortex Aircraft (disturbs nearby)
-			break;
-		case 5:
-			type = "HEAVY";		//greater 136000kg
-			break;
-		case 6:
-			type = "HIPERF";	//>400kts >5g pulls
-			break;
-		case 7:
-			type = "ROTOR";		//helicopters and stuff
-			break;
-		default:
-			type = "UNOWEN";
-		}
+	case 024:
+	case 025:
+	case 026:
+	case 027:
+		type = "GRDOBS";	//ground obstruction
+		break;
+	case 031:
+		type = "GLIDER";
+		break;
+	case 032:
+		type = "LTA";		//Lighter Than Air (hot air balloon)
+		break;
+	case 033:
+		type = "SKYDIV";
+		break;
+	case 034:
+		type = "ULTLIT";	//ultralight, hang or para glider
+		break;
+	case 036:
+		type = "UAV";
+		break;
+	case 037:
+		type = "SPACE";
+		break;
+	case 041:
+		type = "LIGHT";		//sub 7000kg
+		break;
+	case 042:
+		type = "MED1";		//7000-34000kg
+		break;
+	case 043:
+		type = "MED2";		//34000-136000kg
+		break;
+	case 044:
+		type = "HVA";		//High Vortex Aircraft (disturbs nearby)
+		break;
+	case 045:
+		type = "HEAVY";		//greater 136000kg
+		break;
+	case 046:
+		type = "HIPERF";	//>400kts >5g pulls
+		break;
+	case 047:
+		type = "ROTOR";		//helicopters and stuff
 		break;
 	default:
 		type = "UNOWEN";
