@@ -1,14 +1,14 @@
+#pragma once
+#include <stdint.h>
+
 /*
 	ADSB.h
 	This file has struct definitions for the ADS-B frames and
 	their associated objects.
 */
 
-#pragma once
-#include <stdint.h>
-
 /*
-	adsbMessage
+	AdsbMessage
 	In order to insure allignment with the message within the adsbFrame struct,
 	I have created a separate union of the message portion in all of its forms.
 
@@ -30,12 +30,12 @@
 */
 
 /*
-	subSpecFields
+	SubSpecFields
 	These are the specific fields for ground speed (gs), or airborne speed (as),
 	as they relate within the Airborne Velocity (av) struct and message type.
 */
 
-union subSpecFields
+union SubSpecFields
 {
 	struct __attribute__((packed))
 	{
@@ -56,7 +56,7 @@ union subSpecFields
 	} as;	//st=4 is the same as st=2, airpseed is multiplied by 4.
 };
 
-union adsbMessage
+union AdsbMessage
 {
 	uint8_t me[7];	//Message (56 bits including TC)
 
@@ -111,7 +111,7 @@ union adsbMessage
 		uint64_t vr	: 9;	//vertical rate
 		uint64_t svr	: 1;	//vertical rate sign bit
 		uint64_t src	: 1;	//source for vertical rate (GNSS or Baro)
-		union subSpecFields	: 22;	//subtype specific info
+		union SubSpecFields	: 22;	//subtype specific info
 		uint64_t nuc	: 3;	//navigational uncertainty, different between ADS-B versions
 		uint64_t ifr	: 1;	//IFR capability flag
 		uint64_t ic	: 1;	//intent change flag
@@ -140,7 +140,7 @@ union adsbMessage
 };
 
 /*
-	adsbFrame
+	AdsbFrame
 	This union allows access to the 112 bit ADS-B broadcast frame as either
 	7 16 bit integers, or the individual components thereof.
 
@@ -179,14 +179,14 @@ union adsbMessage
 	29 Target State and Status
 	31 Aircraft Op Status
 */
-union adsbFrame
+union AdsbFrame
 {
 	uint8_t frame[14];	//A broadcast frame is 112 bits long, or 8 bits * 14
 
 	struct __attribute__((packed))
 	{
 		uint32_t pi	: 24;	//Parity and Interrogator ID
-		union adsbMessage : 56;	//Message (as described above)
+		union AdsbMessage : 56;	//Message (as described above)
 		uint32_t icao	: 24;	//ICAO aircraft address
 		uint8_t ca	: 3;	//Transponder Capability
 		uint8_t df	: 5;	//Downlink Format
