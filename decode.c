@@ -2,6 +2,7 @@
 #include <math.h>
 
 #define CRC_GEN 0x1FFF409	//generator for CRC parity check
+#define PI 3.14			//Pi for converting radians to degrees
 
 int parityCheck(union AdsbFrame *frame)
 {
@@ -36,7 +37,7 @@ int getIdent(const union AdsbFrame *frame, char call[8], char type[8])
 	}
 
 	switch(frame->id.tc * 010 + frame->id.cat)
-	{				//tc * 8 + cat creates unique value for each craft category
+	{
 	case 021:
 		type = "SEV";		//Surface Emergency Vehicle
 		break;
@@ -97,21 +98,135 @@ int getIdent(const union AdsbFrame *frame, char call[8], char type[8])
 
 int getAirPos(const union AdsbFrame *frame, int *alt, double *lat, *lng)
 {
-	if(frame->id.tc < 9 || frame->id.tc > 22 || frame->id.tc == 19)
+	int x = 0;	//return value for odd circumstances
+	if(frame->ab.tc < 9 || frame->ab.tc > 22 || frame->ab.tc == 19)
 		return -1;
-	return 0;
+
+	if(frame->ab.alt == 0)
+		x = 1;	//no alt data
+	else
+	{
+		if(frame->ab.tc < 19)
+		{
+			*alt = (int)(((frame->ab.alt & 0xFE0) >> 1) +
+				(frame->ab.alt & 0xF));
+			if(frame->ab.alt & 0x010)
+				*alt = *alt * 25 - 1000;
+			else
+			{
+				//gray code conversion
+				//this condition only happens if alt > 50175ft
+				*alt = 50175;
+			}
+		}
+		else
+		{		//round m to ft from GNSS height
+			*alt = (int)round((double)frame->ab.alt * 3.281);
+		}
+	}
+
+	return x;
 }
 
-int getSurfPos(const union AdsbFrame *frame, int *trk, int *spd, double *lat, *lng)
+int getSurfPos(const union AdsbFrame *frame, int *trk, double *spd, double *lat, *lng)
 {
-	if(frame->id.tc < 5 || frame->id.tc > 8)
+	int x = 0;
+	if(frame->sp.tc < 5 || frame->sp.tc > 8)
 		return -1;
-	return 0;
+
+	if(frame->sp.s)	//actual track = TRK * 360 / 128
+		*trk = (int)round((double)frame->sp.trk * 2.8125);
+	else
+		x = 1;
+
+	//depending on the MOV value, the actual speed is based off
+	//different knot increments, starting from increments of 0.125kt
+	//and ending at 5kt increments between MOV values
+	//MOV = 0, [125,127] are invalid values
+	if(frame->sp.mov != 0 && frame->sp.mov < 125)
+	{
+		if(frame->sp.mov == 1)
+			*spd = 0.;
+		else if(frame->sp.mov < 9)
+			*spd = (double)frame->sp.mov * 0.125 - 0.125;
+		else if(frame->sp.mov < 13)
+			*spd = (double)frame->sp.mov * 0.25 - 1.25;
+		else if(frame->sp.mov < 39)
+			*spd = (double)frame->sp.mov * 0.5 - 4.5;
+		else if(frame->sp.mov < 94)
+			*spd = (double)frame->sp.mov - 24.;
+		else if(frame->sp.mov < 109)
+			*spd = (double)frame->sp.mov * 2 - 118.;
+		else
+			*spd = (double)frame->sp.mov * 5 - 445.;
+	}
+	else
+		x += 2;
+
+	return x;
 }
 
-int getAirVel(const union AdsbFrame *frame, double *trk, int *spd)
+int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr)
 {
-	if(frame->id.tc != 19)
+	int x = 0;
+	int vew, vsn;
+	if(frame->av.tc != 19)
 		return -1;
-	return 0;
+
+	if(frame->av.st == 1 || frame->av.st == 2)
+	{
+		vew = (int)frame->av.gs.vew - 1;
+		if(frame->av.gs.dew)
+			vew *= -1;
+		vsn = (int)frame->av.gs.vns - 1;
+		if(frame->av.gs.dns)
+			vsn *= -1;
+		if(frame->av.st == 2)	//supersonic - very rare
+		{
+			vew *= 4;
+			vsn *= 4;
+		}
+		*spd = (int)round(sqrt(pow((double)vew, 2.) + pow((double)vsn, 2.)));
+
+		//potential for errors in atan2 if velocities close to 0
+		//see atan2 documentation of math.h in c std lib
+		*trk = atan2((double)vsn, (double)vew) * 360 / (2*PI);
+		if(*trk < 0)
+			*trk += 360;	//atan2 returns val between -pi and pi
+	}
+	else if(frame->av.st == 3 || frame->av.st == 4)
+	{
+		if(frame->av.as.t)
+			x = 2;		//TAS
+		else
+			x = 1;		//IAS
+
+		*spd = (int)frame->av.as.as - 1;
+		if(frame->av.st == 4)	//supersonic
+			*spd *= 4;
+
+		if(frame->av.as.sh)
+			*trk = (double)frame->av.as.hdg * (360. / 1024.);
+		else
+			x += 2;
+	}
+	else
+		return -2;	//possibility of vert rate still being available
+				//most likely corrupted frame
+
+	if(frame->av.vr)
+	{
+		*vr = ((int)frame->av.vr - 1) * 64;
+		if(frame->av.svr)
+			*vr = *vr * -1;
+	}
+	else
+		x += 5;
+
+	//for reporting altitude differences
+	/*if(frame->av.src == 0)
+	{
+	}*/
+
+	return x;
 }
