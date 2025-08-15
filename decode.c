@@ -31,12 +31,10 @@ int parityCheck(const union AdsbFrame *frame)
 			data[b-2] = data[b-2] ^ (uint8_t)((CRC_GEN >> 8 - o) & 0xFF);
 			data[b-3] = data[b-3] ^ (uint8_t)((CRC_GEN << 7 - o) & 0xFF);
 		}
-		else
-		{
-			i--;
-			b = i / 8 + 3;
-			o = i % 8;
-		}
+		//the XOR operation is guaranteed to make the leftmost bit 0
+		i--;
+		b = i / 8 + 3;
+		o = i % 8;
 	} while(i >= 0);
 
 	if(data[0] == frame->frame[0] && data[1] == frame->frame[1] &&
