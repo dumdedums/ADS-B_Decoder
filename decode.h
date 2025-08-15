@@ -21,8 +21,12 @@
 	Returns a 1 if there was a correctable error,
 	Returns a -1 if there was an noncorrectable error.
 
+	Keep in mind, the "parity" is a CRC remainder,
+	and this function is actually a CRC computation.
+
 	TODO: Possibly use SSE/AVX and AArch64 equivalent for computing
-	parities faster.
+	CRC faster. Or possibility of using lookup tables and other means
+	of computing CRC faster.
 */
 int parityCheck(const union AdsbFrame *frame);
 
@@ -72,7 +76,9 @@ int getSurfPos(const union AdsbFrame *frame, int *trk, int *spd, double *lat, *l
 	Returns 3 if IAS and HDG not available.
 	Returns 4 if TAS and HDG not available.
 	Returns 5 + other codes if vertical rate unavailable.
-	(5 = GS/NoVR, 6 = IAS/NoVR ...)
+	(5: GS/NoVR, 6: IAS/NoVR ...)
+	Returns 10+ if speed/track not available.
+	(10: no spd/trk, 15: no spd/trk/vr)
 	Returns -2 if subtype invalid.
 
 	Speed is almost always given as ground speed.

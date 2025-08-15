@@ -1,16 +1,48 @@
 #include "decode.h"
 #include <math.h>
 
-#define CRC_GEN 0x1FFF409	//generator for CRC parity check
+#define CRC_GEN 0x1FFF409u	//generator for CRC parity check 'u' means unsigned
 #define PI 3.14			//Pi for converting radians to degrees
 
-int parityCheck(union AdsbFrame *frame)
+int parityCheck(const union AdsbFrame *frame)
 {
 	uint8_t data[14];
-	int i;
-	for(i = 0;i < 14;i++)	//lowest 24 bits of frame is parity code
-		data[i] = frame->frame[i];
-	return 0;
+	int i, b, o;
+	data[0] = 0;	//will be overwritten by parity code later
+	data[1] = 0;
+	data[2] = 0;
+	for(i = 0;i < 11;i++)	//lowest 24 bits of frame is parity code
+		data[i] = frame->frame[i + 3];
+
+	i = 87;		//data bit from 0-87
+	b = 13;		//data[] block from 3-13
+	o = 7;		//offset bit from 0-7
+	do
+	{
+		if(data[b] & (1 << o))	//checks if leftmost data bit is 1
+		{	//bit shifts are done after add/sub, but before bitwise AND
+			//25 greatest bits of data XOR CRC_GEN operation
+			//since the 25 bits are split between 3 uint8_ts,
+			//a little bit of math is done to align the CRC_GEN
+			//right shift CRC_GEN by 17-24 bits depending on o for data[b]
+			//last data block requires CRC_GEN left shift alignment
+			data[b] = data[b] ^ (uint8_t)((CRC_GEN >> 24 - o) & 0xFF);
+			data[b-1] = data[b-1] ^ (uint8_t)((CRC_GEN >> 16 - o) & 0xFF);
+			data[b-2] = data[b-2] ^ (uint8_t)((CRC_GEN >> 8 - o) & 0xFF);
+			data[b-3] = data[b-3] ^ (uint8_t)((CRC_GEN << 7 - o) & 0xFF);
+		}
+		else
+		{
+			i--;
+			b = i / 8 + 3;
+			o = i % 8;
+		}
+	} while(i >= 0);
+
+	if(data[0] == frame->frame[0] && data[1] == frame->frame[1] &&
+		data[2] == frame->frame[2])
+		return 0;
+	return -1;
 }
 
 int getIdent(const union AdsbFrame *frame, char call[8], char type[8])
@@ -175,6 +207,12 @@ int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr)
 
 	if(frame->av.st == 1 || frame->av.st == 2)
 	{
+		if(frame->av.gs.vew == 0)
+		{
+			x = 10;
+			break;		//velocities invalid if 0
+		}
+
 		vew = (int)frame->av.gs.vew - 1;
 		if(frame->av.gs.dew)
 			vew *= -1;
