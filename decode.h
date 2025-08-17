@@ -44,13 +44,14 @@ int getIdent(const union AdsbFrame *frame, char call[8], char type[8]);
 
 	Will most likely always return altitude in ft, since that is customary.
 
-	May need two frames to find latitude and longitude,
-	but we also can possibly use a local reference,
-	so there may be different versions of the function.
+	Uses a relative latitude longitude (use your location or nearest airport).
+	Works for aircraft within 180nm of relative position.
 
 	TODO: Gray code conversion for baro alts >50175ft
+	Alternative that uses an even and odd frame instead of relative pos?
 */
-int getAirPos(const union AdsbFrame *frame, int *alt, double *lat, *lng);
+int getAirPos(const union AdsbFrame *frame, double rlat, rlng,
+	int *alt, double *lat, *lng);
 
 /*
 	getSurfPos
@@ -65,8 +66,11 @@ int getAirPos(const union AdsbFrame *frame, int *alt, double *lat, *lng);
 
 	Highest readable ground speed is 174kts.
 	If spd == 175, then it is most likely >175.
+
+	Use nearest airport as relative position. Works within 45nm (zone size).
 */
-int getSurfPos(const union AdsbFrame *frame, int *trk, int *spd, double *lat, *lng);
+int getSurfPos(const union AdsbFrame *frame, double rlat, rlng,
+	int *trk, double *spd, *lat, *lng);
 
 /*
 	getAirVel

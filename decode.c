@@ -2,7 +2,67 @@
 #include <math.h>
 
 #define CRC_GEN 0x1FFF409u	//generator for CRC parity check 'u' means unsigned
-#define PI 3.14			//Pi for converting radians to degrees
+#define PI 3.141592653589793	//Pi for converting radians to degrees
+#define Nz 15			//num latitude zones
+
+/*
+	cprDecode
+	Returns 0 upon success
+	lat and lng are the return variables
+	tf (Type Flag): 0 for airborne, 1 for surface
+
+	format, lon-cpr, and lat-cpr bits are in the same part of frame for
+	airborne vs surface messages
+
+	This follows the equations used in Junzi Sun's The 1090Mhz Riddle,
+	which he probably got from the NASA paper on Compact Position Reporting (CPR).
+
+	dLat = 360/(4Nz-[odd bit]) for airborne, while dLat = 90/(4Nz-odd) on surf.
+	also dLon = 90/n as opposed to whatever is needed for airborne.
+	
+	dLat is fixed based on whether we are using air or surface position,
+	along with even or odd message bit.
+	dLng changes with latitude, as latitudinal parallels get shorter near
+	north and south poles.
+
+	Longitudes in calculations are from 0-360 degrees,
+	as opposed to -180 to 180 degrees.
+*/
+static int cprDecode(const union AdsbFrame *frame, double rlat, rlng, int tf,
+	double *lat, *lng)
+{
+	int dlat, dlng;		//dlat: lat zone size, dlng: long zone size
+	int j, m;		//j: lat zone index, m: long zone index
+	int NL;			//number of long zones, based on lat
+	if(rlng < 0.)
+		rlng += 360.;
+
+	//lat-cpr and lon-cpr are going to now be lat and lng
+	*lat = (double)frame->ab.lat-cpr / 131072.;	//131072 = 2^17
+	*lng = (double)frame->ab.lon-cpr / 131072.;
+
+	dlat = (360 / (4*Nz - frame->ab.f)) / (tf * 4);
+	j = (int)(floor(rlat / (double)dlat) + floor(fmod(rlat, (double)dlat) /
+		(double)dlat - *lat + 0.5));
+	*lat = (double)dlat * ((double)j + *lat);
+
+	if(*lat == 0.)		//edge cases
+		NL = 59;
+	else if(*lat > 87. || *lat < -87.)
+		NL = 1;
+	else			//replace function with lookup table eventually
+		NL = (int)floor(2.*PI / acos(1. - (1.-cos(PI/(2.*Nz))) /
+			pow(cos(*lat * PI/180), 2.)));
+
+	dlng = (360 / (int)fmax(1., NL - frame->ab.f)) / (tf * 4);
+	m = (int)(floor(rlng / (double)dlng) + floor(fmod(rlng, (double)dlng) /
+		(double)dlng - *lng + 0.5));
+	*lng = (double)dlng * ((double)m + *lng);
+	if(*lng > 180.)
+		*lng = *lng - 360.;
+
+	return 0;
+}
 
 int parityCheck(const union AdsbFrame *frame)
 {
@@ -126,7 +186,8 @@ int getIdent(const union AdsbFrame *frame, char call[8], char type[8])
 	return 0;
 }
 
-int getAirPos(const union AdsbFrame *frame, int *alt, double *lat, *lng)
+int getAirPos(const union AdsbFrame *frame, double rlat, rlng, int *alt,
+	double *lat, *lng)
 {
 	int x = 0;	//return value for odd circumstances
 	if(frame->ab.tc < 9 || frame->ab.tc > 22 || frame->ab.tc == 19)
@@ -144,7 +205,7 @@ int getAirPos(const union AdsbFrame *frame, int *alt, double *lat, *lng)
 				*alt = *alt * 25 - 1000;
 			else
 			{
-				//gray code conversion
+				//TODO: gray code conversion
 				//this condition only happens if alt > 50175ft
 				*alt = 50175;
 			}
@@ -155,10 +216,13 @@ int getAirPos(const union AdsbFrame *frame, int *alt, double *lat, *lng)
 		}
 	}
 
+	cprDecode(*frame, rlat, rlng, 0, lat, lng);
+
 	return x;
 }
 
-int getSurfPos(const union AdsbFrame *frame, int *trk, double *spd, double *lat, *lng)
+int getSurfPos(const union AdsbFrame *frame, double rlat, rlng,
+	int *trk, double *spd, *lat, *lng)
 {
 	int x = 0;
 	if(frame->sp.tc < 5 || frame->sp.tc > 8)
@@ -193,6 +257,8 @@ int getSurfPos(const union AdsbFrame *frame, int *trk, double *spd, double *lat,
 	else
 		x += 2;
 
+	cprDecode(*frame, rlat, rlng, 1, lat, lng);
+
 	return x;
 }
 
@@ -226,7 +292,7 @@ int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr)
 
 		//potential for errors in atan2 if velocities close to 0
 		//see atan2 documentation of math.h in c std lib
-		*trk = atan2((double)vsn, (double)vew) * 360 / (2*PI);
+		*trk = atan2((double)vsn, (double)vew) * 180. / PI;
 		if(*trk < 0)
 			*trk += 360;	//atan2 returns val between -pi and pi
 	}
