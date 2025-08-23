@@ -28,8 +28,8 @@
 	Longitudes in calculations are from 0-360 degrees,
 	as opposed to -180 to 180 degrees.
 */
-static int cprDecode(const union AdsbFrame *frame, double rlat, rlng, int tf,
-	double *lat, *lng)
+static int cprDecode(const union AdsbFrame *frame, double rlat, double rlng,
+	int tf, double *lat, double *lng)
 {
 	int dlat, dlng;		//dlat: lat zone size, dlng: long zone size
 	int j, m;		//j: lat zone index, m: long zone index
@@ -38,10 +38,10 @@ static int cprDecode(const union AdsbFrame *frame, double rlat, rlng, int tf,
 		rlng += 360.;
 
 	//lat-cpr and lon-cpr are going to now be lat and lng
-	*lat = (double)frame->ab.lat-cpr / 131072.;	//131072 = 2^17
-	*lng = (double)frame->ab.lon-cpr / 131072.;
+	*lat = (double)frame->me.ab.latcpr / 131072.;	//131072 = 2^17
+	*lng = (double)frame->me.ab.loncpr / 131072.;
 
-	dlat = (360 / (4*Nz - frame->ab.f)) / (tf * 4);
+	dlat = (360 / (4*Nz - frame->me.ab.f)) / (tf * 4);
 	j = (int)(floor(rlat / (double)dlat) + floor(fmod(rlat, (double)dlat) /
 		(double)dlat - *lat + 0.5));
 	*lat = (double)dlat * ((double)j + *lat);
@@ -54,7 +54,7 @@ static int cprDecode(const union AdsbFrame *frame, double rlat, rlng, int tf,
 		NL = (int)floor(2.*PI / acos(1. - (1.-cos(PI/(2.*Nz))) /
 			pow(cos(*lat * PI/180), 2.)));
 
-	dlng = (360 / (int)fmax(1., NL - frame->ab.f)) / (tf * 4);
+	dlng = (360 / (int)fmax(1., NL - frame->me.ab.f)) / (tf * 4);
 	m = (int)(floor(rlng / (double)dlng) + floor(fmod(rlng, (double)dlng) /
 		(double)dlng - *lng + 0.5));
 	*lng = (double)dlng * ((double)m + *lng);
@@ -105,17 +105,19 @@ int parityCheck(const union AdsbFrame *frame)
 
 int getIdent(const union AdsbFrame *frame, char call[8], char type[8])
 {
-	if(frame->id.tc < 1 || frame->id.tc > 4)
+	int i;
+
+	if(frame->me.id.tc < 1 || frame->me.id.tc > 4)
 		return -1;
 
-	call[0] = (char)frame->id.c1;
-	call[1] = (char)frame->id.c2;
-	call[2] = (char)frame->id.c3;
-	call[3] = (char)frame->id.c4;
-	call[4] = (char)frame->id.c5;
-	call[5] = (char)frame->id.c6;
-	call[6] = (char)frame->id.c7;
-	call[7] = (char)frame->id.c8;
+	call[0] = (char)frame->me.id.c1;
+	call[1] = (char)frame->me.id.c2;
+	call[2] = (char)frame->me.id.c3;
+	call[3] = (char)frame->me.id.c4;
+	call[4] = (char)frame->me.id.c5;
+	call[5] = (char)frame->me.id.c6;
+	call[6] = (char)frame->me.id.c7;
+	call[7] = (char)frame->me.id.c8;
 
 	for(i = 0;i < 8;i++)
 	{
@@ -126,7 +128,7 @@ int getIdent(const union AdsbFrame *frame, char call[8], char type[8])
 			call[i] += 0x40;
 	}
 
-	switch(frame->id.tc * 010 + frame->id.cat)
+	switch(frame->me.id.tc * 010 + frame->me.id.cat)
 	{
 	case 021:
 		type = "SEV";		//Surface Emergency Vehicle
@@ -186,22 +188,22 @@ int getIdent(const union AdsbFrame *frame, char call[8], char type[8])
 	return 0;
 }
 
-int getAirPos(const union AdsbFrame *frame, double rlat, rlng, int *alt,
-	double *lat, *lng)
+int getAirPos(const union AdsbFrame *frame, double rlat, double rlng, int *alt,
+	double *lat, double *lng)
 {
 	int x = 0;	//return value for odd circumstances
-	if(frame->ab.tc < 9 || frame->ab.tc > 22 || frame->ab.tc == 19)
+	if(frame->me.ab.tc < 9 || frame->me.ab.tc > 22 || frame->me.ab.tc == 19)
 		return -1;
 
-	if(frame->ab.alt == 0)
+	if(frame->me.ab.alt == 0)
 		x = 1;	//no alt data
 	else
 	{
-		if(frame->ab.tc < 19)
+		if(frame->me.ab.tc < 19)
 		{
-			*alt = (int)(((frame->ab.alt & 0xFE0) >> 1) +
-				(frame->ab.alt & 0xF));
-			if(frame->ab.alt & 0x010)
+			*alt = (int)(((frame->me.ab.alt & 0xFE0) >> 1) +
+				(frame->me.ab.alt & 0xF));
+			if(frame->me.ab.alt & 0x010)
 				*alt = *alt * 25 - 1000;
 			else
 			{
@@ -212,24 +214,24 @@ int getAirPos(const union AdsbFrame *frame, double rlat, rlng, int *alt,
 		}
 		else
 		{		//round m to ft from GNSS height
-			*alt = (int)round((double)frame->ab.alt * 3.281);
+			*alt = (int)round((double)frame->me.ab.alt * 3.281);
 		}
 	}
 
-	cprDecode(*frame, rlat, rlng, 0, lat, lng);
+	cprDecode(frame, rlat, rlng, 0, lat, lng);
 
 	return x;
 }
 
-int getSurfPos(const union AdsbFrame *frame, double rlat, rlng,
-	int *trk, double *spd, *lat, *lng)
+int getSurfPos(const union AdsbFrame *frame, double rlat, double rlng,
+	int *trk, double *spd, double *lat, double *lng)
 {
 	int x = 0;
-	if(frame->sp.tc < 5 || frame->sp.tc > 8)
+	if(frame->me.sp.tc < 5 || frame->me.sp.tc > 8)
 		return -1;
 
-	if(frame->sp.s)	//actual track = TRK * 360 / 128
-		*trk = (int)round((double)frame->sp.trk * 2.8125);
+	if(frame->me.sp.s)	//actual track = TRK * 360 / 128
+		*trk = (int)round((double)frame->me.sp.trk * 2.8125);
 	else
 		x = 1;
 
@@ -237,32 +239,32 @@ int getSurfPos(const union AdsbFrame *frame, double rlat, rlng,
 	//different knot increments, starting from increments of 0.125kt
 	//and ending at 5kt increments between MOV values
 	//MOV = 0, [125,127] are invalid values
-	if(frame->sp.mov != 0 && frame->sp.mov < 125)
+	if(frame->me.sp.mov != 0 && frame->me.sp.mov < 125)
 	{
-		if(frame->sp.mov == 1)
+		if(frame->me.sp.mov == 1)
 			*spd = 0.;
-		else if(frame->sp.mov < 9)
-			*spd = (double)frame->sp.mov * 0.125 - 0.125;
-		else if(frame->sp.mov < 13)
-			*spd = (double)frame->sp.mov * 0.25 - 1.25;
-		else if(frame->sp.mov < 39)
-			*spd = (double)frame->sp.mov * 0.5 - 4.5;
-		else if(frame->sp.mov < 94)
-			*spd = (double)frame->sp.mov - 24.;
-		else if(frame->sp.mov < 109)
-			*spd = (double)frame->sp.mov * 2 - 118.;
+		else if(frame->me.sp.mov < 9)
+			*spd = (double)frame->me.sp.mov * 0.125 - 0.125;
+		else if(frame->me.sp.mov < 13)
+			*spd = (double)frame->me.sp.mov * 0.25 - 1.25;
+		else if(frame->me.sp.mov < 39)
+			*spd = (double)frame->me.sp.mov * 0.5 - 4.5;
+		else if(frame->me.sp.mov < 94)
+			*spd = (double)frame->me.sp.mov - 24.;
+		else if(frame->me.sp.mov < 109)
+			*spd = (double)frame->me.sp.mov * 2 - 118.;
 		else
-			*spd = (double)frame->sp.mov * 5 - 445.;
+			*spd = (double)frame->me.sp.mov * 5 - 445.;
 	}
 	else
 		x += 2;
 
-	cprDecode(*frame, rlat, rlng, 1, lat, lng);
+	cprDecode(frame, rlat, rlng, 1, lat, lng);
 
 	return x;
 }
 
-int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr)
+/*int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr)
 {
 	int x = 0;
 	int vew, vsn;
@@ -325,10 +327,7 @@ int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr)
 	else
 		x += 5;
 
-	//for reporting altitude differences
-	/*if(frame->av.src == 0)
-	{
-	}*/
+	//TODO: Report alt difference?
 
 	return x;
-}
+}*/

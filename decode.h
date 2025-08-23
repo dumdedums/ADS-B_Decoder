@@ -50,8 +50,8 @@ int getIdent(const union AdsbFrame *frame, char call[8], char type[8]);
 	TODO: Gray code conversion for baro alts >50175ft
 	Alternative that uses an even and odd frame instead of relative pos?
 */
-int getAirPos(const union AdsbFrame *frame, double rlat, rlng,
-	int *alt, double *lat, *lng);
+int getAirPos(const union AdsbFrame *frame, double rlat, double rlng,
+	int *alt, double *lat, double *lng);
 
 /*
 	getSurfPos
@@ -69,8 +69,8 @@ int getAirPos(const union AdsbFrame *frame, double rlat, rlng,
 
 	Use nearest airport as relative position. Works within 45nm (zone size).
 */
-int getSurfPos(const union AdsbFrame *frame, double rlat, rlng,
-	int *trk, double *spd, *lat, *lng);
+int getSurfPos(const union AdsbFrame *frame, double rlat, double rlng,
+	int *trk, double *spd, double *lat, double *lng);
 
 /*
 	getAirVel

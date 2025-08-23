@@ -76,8 +76,8 @@ union AdsbMessage
 
 	struct __attribute__((packed))
 	{
-		uint64_t lon-cpr	: 17;	//longitude
-		uint64_t lat-cpr	: 17;	//CPR encoded latitude
+		uint64_t loncpr		: 17;	//longitude
+		uint64_t latcpr		: 17;	//CPR encoded latitude
 		uint64_t f		: 1;	//CPR format (even frame or odd frame)
 		uint64_t t		: 1;	//time
 		uint64_t alt		: 12;	//encoded altitude
@@ -93,8 +93,8 @@ union AdsbMessage
 	
 	struct __attribute__((packed))
 	{
-		uint64_t lon-cpr	: 17;	//longitude
-		uint64_t lat-cpr	: 17;	//latitude (calculated differently from airborne)
+		uint64_t loncpr		: 17;	//longitude
+		uint64_t latcpr		: 17;	//latitude (calculated differently from airborne)
 		uint64_t f		: 1;	//even or odd CPR format
 		uint64_t t		: 1;	//time
 		uint64_t trk		: 7;	//ground track (degrees) = 360*trk / 128
@@ -103,7 +103,7 @@ union AdsbMessage
 		uint64_t tc		: 5;
 	} sp;	//surface position tc 5-8
 
-	struct __attribute__((packed))
+	/*struct __attribute__((packed))
 	{
 		uint64_t diff	: 7;	//GNSS - Baro alt (divided by 25ft)
 		uint64_t sdif	: 1;	//sign bit for GNSS alt - Baro alt
@@ -111,13 +111,13 @@ union AdsbMessage
 		uint64_t vr	: 9;	//vertical rate
 		uint64_t svr	: 1;	//vertical rate sign bit
 		uint64_t src	: 1;	//source for vertical rate (GNSS or Baro)
-		union SubSpecFields	: 22;	//subtype specific info
+		union SubSpecFields ssf;	//subtype specific info
 		uint64_t nuc	: 3;	//navigational uncertainty, different between ADS-B versions
 		uint64_t ifr	: 1;	//IFR capability flag
 		uint64_t ic	: 1;	//intent change flag
 		uint64_t st	: 3;	//subtypes 1 and 2 are ground speed, 3 and 4 are TAS or IAS
 		uint64_t tc	: 5;
-	} av;	//airborne velocities tc=19
+	} av;	//airborne velocities tc=19*/
 
 	struct __attribute__((packed))
 	{
@@ -186,7 +186,7 @@ union AdsbFrame
 	struct __attribute__((packed))
 	{
 		uint32_t pi	: 24;	//Parity and Interrogator ID
-		union AdsbMessage : 56;	//Message (as described above)
+		union AdsbMessage me;	//Message (as described above)
 		uint32_t icao	: 24;	//ICAO aircraft address
 		uint8_t ca	: 3;	//Transponder Capability
 		uint8_t df	: 5;	//Downlink Format

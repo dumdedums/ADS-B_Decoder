@@ -22,7 +22,7 @@ int main()
 	f1.frame[1] = 0x60;
 	f1.frame[0] = 0x98;
 
-	printf("AdsbFrame is %u bytes\n", sizeof(union AdsbFrame));
+	printf("AdsbFrame is %zu bytes\n", sizeof(union AdsbFrame));
 	printf("f1 content: %#X%X%X%X%X%X%X%X%X%X%X%X%X%X\n",
 		(unsigned int)f1.frame[13], (unsigned int)f1.frame[12],
 		(unsigned int)f1.frame[11], (unsigned int)f1.frame[10],
@@ -34,10 +34,10 @@ int main()
 
 	printf("DF: %u, CA: %u, ICAO: %#X, PI: %#X\n", (unsigned int)f1.df,
 		(unsigned int)f1.ca, (unsigned int)f1.icao, (unsigned int)f1.pi);
-	printf("Raw Message: %#X%X%X%X%X%X%X\nTC:%u\n", (unsigned int)f1.me[6],
-		(unsigned int)f1.me[5], (unsigned int)f1.me[4],
-		(unsigned int)f1.me[3], (unsigned int)f1.me[2],
-		(unsigned int)f1.me[1], (unsigned int)f1.me[0],
-		(unsigned int)f1.id.tc);
+	printf("Raw Message: %#X%X%X%X%X%X%X\nTC:%u\n", (unsigned int)f1.me.me[6],
+		(unsigned int)f1.me.me[5], (unsigned int)f1.me.me[4],
+		(unsigned int)f1.me.me[3], (unsigned int)f1.me.me[2],
+		(unsigned int)f1.me.me[1], (unsigned int)f1.me.me[0],
+		(unsigned int)f1.me.id.tc);
 	return 0;
 }
