@@ -30,12 +30,12 @@
 */
 
 /*
-	SubSpecFields
+	SubSpecFields (deprecated)
 	These are the specific fields for ground speed (gs), or airborne speed (as),
 	as they relate within the Airborne Velocity (av) struct and message type.
 */
 
-union SubSpecFields
+/*union SubSpecFields
 {
 	struct __attribute__((packed))
 	{
@@ -54,7 +54,7 @@ union SubSpecFields
 		uint32_t hdg	: 10;	//heading = hdg * 360/1024 degrees
 		uint32_t sh	: 1;	//heading status (0 means hdg not available)
 	} as;	//st=4 is the same as st=2, airpseed is multiplied by 4.
-};
+};*/
 
 union AdsbMessage
 {
@@ -103,7 +103,7 @@ union AdsbMessage
 		uint64_t tc		: 5;
 	} sp;	//surface position tc 5-8
 
-	/*struct __attribute__((packed))
+	struct __attribute__((packed))
 	{
 		uint64_t diff	: 7;	//GNSS - Baro alt (divided by 25ft)
 		uint64_t sdif	: 1;	//sign bit for GNSS alt - Baro alt
@@ -111,13 +111,35 @@ union AdsbMessage
 		uint64_t vr	: 9;	//vertical rate
 		uint64_t svr	: 1;	//vertical rate sign bit
 		uint64_t src	: 1;	//source for vertical rate (GNSS or Baro)
-		union SubSpecFields ssf;	//subtype specific info
+		uint32_t vns	: 10;	//North-South velocity
+		uint32_t dns	: 1;	//N-S direction (0 South to North, 1 North to South)
+		uint32_t vew	: 10;	//E-W velocity
+		uint32_t dew	: 1;	//E-W direction (0 West to East, 1 East to West)
 		uint64_t nuc	: 3;	//navigational uncertainty, different between ADS-B versions
 		uint64_t ifr	: 1;	//IFR capability flag
 		uint64_t ic	: 1;	//intent change flag
 		uint64_t st	: 3;	//subtypes 1 and 2 are ground speed, 3 and 4 are TAS or IAS
 		uint64_t tc	: 5;
-	} av;	//airborne velocities tc=19*/
+	} avg;	//airborne velocities tc=19 ground speed specific
+
+	struct __attribute__((packed))
+	{
+		uint64_t diff	: 7;	//GNSS - Baro alt (divided by 25ft)
+		uint64_t sdif	: 1;	//sign bit for GNSS alt - Baro alt
+		uint64_t res	: 2;
+		uint64_t vr	: 9;	//vertical rate
+		uint64_t svr	: 1;	//vertical rate sign bit
+		uint64_t src	: 1;	//source for vertical rate (GNSS or Baro)
+		uint32_t as	: 10;	//speed = as - 1 or 4*(as-1) (0 means not available)
+		uint32_t t	: 1;	//type 0 = IAS, 1 = TAS
+		uint32_t hdg	: 10;	//heading = hdg * 360/1024 degrees
+		uint32_t sh	: 1;	//heading status (0 means hdg not available)
+		uint64_t nuc	: 3;	//navigational uncertainty, different between ADS-B versions
+		uint64_t ifr	: 1;	//IFR capability flag
+		uint64_t ic	: 1;	//intent change flag
+		uint64_t st	: 3;	//subtypes 1 and 2 are ground speed, 3 and 4 are TAS or IAS
+		uint64_t tc	: 5;
+	} ava;	//airborne velocities tc=19 IAS/TAS specific
 
 	struct __attribute__((packed))
 	{

@@ -1,5 +1,6 @@
 #include "decode.h"
 #include <math.h>
+#include <string.h>
 
 #define CRC_GEN 0x1FFF409u	//generator for CRC parity check 'u' means unsigned
 #define PI 3.141592653589793	//Pi for converting radians to degrees
@@ -131,58 +132,58 @@ int getIdent(const union AdsbFrame *frame, char call[8], char type[8])
 	switch(frame->me.id.tc * 010 + frame->me.id.cat)
 	{
 	case 021:
-		type = "SEV";		//Surface Emergency Vehicle
+		strcpy(type, "SEV");	//Surface Emergency Vehicle
 		break;
 	case 023:
-		type = "SSV";		//Surface Service Vehicle
+		strcpy(type, "SSV");	//Surface Service Vehicle
 		break;
 	case 024:
 	case 025:
 	case 026:
 	case 027:
-		type = "GRDOBS";	//ground obstruction
+		strcpy(type, "GRDOBS");	//ground obstruction
 		break;
 	case 031:
-		type = "GLIDER";
+		strcpy(type, "GLIDER");
 		break;
 	case 032:
-		type = "LTA";		//Lighter Than Air (hot air balloon)
+		strcpy(type, "LTA");	//Lighter Than Air (hot air balloon)
 		break;
 	case 033:
-		type = "SKYDIV";
+		strcpy(type, "SKYDIV");
 		break;
 	case 034:
-		type = "ULTLIT";	//ultralight, hang or para glider
+		strcpy(type, "ULTLIT");	//ultralight, hang or para glider
 		break;
 	case 036:
-		type = "UAV";
+		strcpy(type, "UAV");
 		break;
 	case 037:
-		type = "SPACE";
+		strcpy(type, "SPACE");
 		break;
 	case 041:
-		type = "LIGHT";		//sub 7000kg
+		strcpy(type, "LIGHT");	//sub 7000kg
 		break;
 	case 042:
-		type = "MED1";		//7000-34000kg
+		strcpy(type, "MED1");	//7000-34000kg
 		break;
 	case 043:
-		type = "MED2";		//34000-136000kg
+		strcpy(type, "MED2");	//34000-136000kg
 		break;
 	case 044:
-		type = "HVA";		//High Vortex Aircraft (disturbs nearby)
+		strcpy(type, "HVA");	//High Vortex Aircraft (disturbs nearby)
 		break;
 	case 045:
-		type = "HEAVY";		//greater 136000kg
+		strcpy(type, "HEAVY");	//greater 136000kg
 		break;
 	case 046:
-		type = "HIPERF";	//>400kts >5g pulls
+		strcpy(type, "HIPERF");	//>400kts >5g pulls
 		break;
 	case 047:
-		type = "ROTOR";		//helicopters and stuff
+		strcpy(type, "ROTOR");	//helicopters and stuff
 		break;
 	default:
-		type = "UNOWEN";
+		strcpy(type, "UNOWEN");
 	}
 
 	return 0;
@@ -264,28 +265,28 @@ int getSurfPos(const union AdsbFrame *frame, double rlat, double rlng,
 	return x;
 }
 
-/*int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr)
+int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr)
 {
 	int x = 0;
 	int vew, vsn;
-	if(frame->av.tc != 19)
+	if(frame->me.avg.tc != 19)
 		return -1;
 
-	if(frame->av.st == 1 || frame->av.st == 2)
+	if(frame->me.avg.st == 1 || frame->me.avg.st == 2)
 	{
-		if(frame->av.gs.vew == 0)
+		if(frame->me.avg.vew == 0)
 		{
 			x = 10;
-			break;		//velocities invalid if 0
+			goto INVALID_VEL;	//velocities invalid if 0
 		}
 
-		vew = (int)frame->av.gs.vew - 1;
-		if(frame->av.gs.dew)
+		vew = (int)frame->me.avg.vew - 1;
+		if(frame->me.avg.dew)
 			vew *= -1;
-		vsn = (int)frame->av.gs.vns - 1;
-		if(frame->av.gs.dns)
+		vsn = (int)frame->me.avg.vns - 1;
+		if(frame->me.avg.dns)
 			vsn *= -1;
-		if(frame->av.st == 2)	//supersonic - very rare
+		if(frame->me.avg.st == 2)	//supersonic - very rare
 		{
 			vew *= 4;
 			vsn *= 4;
@@ -298,30 +299,31 @@ int getSurfPos(const union AdsbFrame *frame, double rlat, double rlng,
 		if(*trk < 0)
 			*trk += 360;	//atan2 returns val between -pi and pi
 	}
-	else if(frame->av.st == 3 || frame->av.st == 4)
+	else if(frame->me.ava.st == 3 || frame->me.ava.st == 4)
 	{
-		if(frame->av.as.t)
+		if(frame->me.ava.t)
 			x = 2;		//TAS
 		else
 			x = 1;		//IAS
 
-		*spd = (int)frame->av.as.as - 1;
-		if(frame->av.st == 4)	//supersonic
+		*spd = (int)frame->me.ava.as - 1;
+		if(frame->me.ava.st == 4)	//supersonic
 			*spd *= 4;
 
-		if(frame->av.as.sh)
-			*trk = (double)frame->av.as.hdg * (360. / 1024.);
+		if(frame->me.ava.sh)
+			*trk = (double)frame->me.ava.hdg * (360. / 1024.);
 		else
 			x += 2;
 	}
 	else
 		return -2;	//possibility of vert rate still being available
 				//most likely corrupted frame
+	INVALID_VEL:
 
-	if(frame->av.vr)
+	if(frame->me.avg.vr)
 	{
-		*vr = ((int)frame->av.vr - 1) * 64;
-		if(frame->av.svr)
+		*vr = ((int)frame->me.avg.vr - 1) * 64;
+		if(frame->me.avg.svr)
 			*vr = *vr * -1;
 	}
 	else
@@ -330,4 +332,4 @@ int getSurfPos(const union AdsbFrame *frame, double rlat, double rlng,
 	//TODO: Report alt difference?
 
 	return x;
-}*/
+}

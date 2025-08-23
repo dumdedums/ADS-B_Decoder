@@ -1,8 +1,9 @@
-#include "adsb.h"
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <assert.h>
+#include "adsb.h"
+#include "decode.h"
 
 int main()
 {
@@ -39,5 +40,11 @@ int main()
 		(unsigned int)f1.me.me[3], (unsigned int)f1.me.me[2],
 		(unsigned int)f1.me.me[1], (unsigned int)f1.me.me[0],
 		(unsigned int)f1.me.id.tc);
+
+	char callsign[9], type[8];
+	callsign[8] = 0;
+	getIdent(&f1, callsign, type);
+	printf("Callsign: %s, aircraft type: %s\n", callsign, type);
+
 	return 0;
 }
