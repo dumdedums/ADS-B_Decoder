@@ -1,11 +1,12 @@
 CC = gcc
+CFLAGS = -g
 LDFLAGS = -lm
 
 test: test.c adsb.h decode.o
-	$(CC) decode.o test.c $(LDFLAGS) -o test
+	$(CC) $(CFLAGS) decode.o test.c $(LDFLAGS) -o test
 
 decode.o: decode.c adsb.h
-	$(CC) -c decode.c
+	$(CC) $(CFLAGS) -c decode.c
 
 clean:
-	rm -f *.o
+	rm -f ./*.o ./test

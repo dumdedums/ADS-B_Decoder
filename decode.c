@@ -42,7 +42,7 @@ static int cprDecode(const union AdsbFrame *frame, double rlat, double rlng,
 	*lat = (double)frame->me.ab.latcpr / 131072.;	//131072 = 2^17
 	*lng = (double)frame->me.ab.loncpr / 131072.;
 
-	dlat = (360 / (4*Nz - frame->me.ab.f)) / (tf * 4);
+	dlat = (360 / (4*Nz - frame->me.ab.f)) / (tf * 3 + 1);
 	j = (int)(floor(rlat / (double)dlat) + floor(fmod(rlat, (double)dlat) /
 		(double)dlat - *lat + 0.5));
 	*lat = (double)dlat * ((double)j + *lat);
@@ -55,7 +55,7 @@ static int cprDecode(const union AdsbFrame *frame, double rlat, double rlng,
 		NL = (int)floor(2.*PI / acos(1. - (1.-cos(PI/(2.*Nz))) /
 			pow(cos(*lat * PI/180), 2.)));
 
-	dlng = (360 / (int)fmax(1., NL - frame->me.ab.f)) / (tf * 4);
+	dlng = (360 / (int)fmax(1., NL - frame->me.ab.f)) / (tf * 3 + 1);
 	m = (int)(floor(rlng / (double)dlng) + floor(fmod(rlng, (double)dlng) /
 		(double)dlng - *lng + 0.5));
 	*lng = (double)dlng * ((double)m + *lng);
