@@ -4,7 +4,7 @@
 
 #define CRC_GEN 0x1FFF409u	//generator for CRC parity check 'u' means unsigned
 #define PI 3.141592653589793	//Pi for converting radians to degrees
-#define Nz 15			//num latitude zones
+#define Nz 15.			//num latitude zones
 
 /*
 	cprDecode
@@ -32,7 +32,7 @@
 static int cprDecode(const union AdsbFrame *frame, double rlat, double rlng,
 	int tf, double *lat, double *lng)
 {
-	int dlat, dlng;		//dlat: lat zone size, dlng: long zone size
+	double dlat, dlng;	//dlat: lat zone size, dlng: long zone size
 	int j, m;		//j: lat zone index, m: long zone index
 	int NL;			//number of long zones, based on lat
 	if(rlng < 0.)
@@ -42,10 +42,10 @@ static int cprDecode(const union AdsbFrame *frame, double rlat, double rlng,
 	*lat = (double)frame->me.ab.latcpr / 131072.;	//131072 = 2^17
 	*lng = (double)frame->me.ab.loncpr / 131072.;
 
-	dlat = (360 / (4*Nz - frame->me.ab.f)) / (tf * 3 + 1);
-	j = (int)(floor(rlat / (double)dlat) + floor(fmod(rlat, (double)dlat) /
-		(double)dlat - *lat + 0.5));
-	*lat = (double)dlat * ((double)j + *lat);
+	dlat = (360. / (4.*Nz - (double)frame->me.ab.f)) / ((double)tf * 3. + 1.);
+	j = (int)(floor(rlat / dlat) + floor(fmod(rlat, dlat) /
+		dlat - *lat + 0.5));
+	*lat = dlat * ((double)j + *lat);
 
 	if(*lat == 0.)		//edge cases
 		NL = 59;
@@ -55,10 +55,10 @@ static int cprDecode(const union AdsbFrame *frame, double rlat, double rlng,
 		NL = (int)floor(2.*PI / acos(1. - (1.-cos(PI/(2.*Nz))) /
 			pow(cos(*lat * PI/180), 2.)));
 
-	dlng = (360 / (int)fmax(1., NL - frame->me.ab.f)) / (tf * 3 + 1);
-	m = (int)(floor(rlng / (double)dlng) + floor(fmod(rlng, (double)dlng) /
-		(double)dlng - *lng + 0.5));
-	*lng = (double)dlng * ((double)m + *lng);
+	dlng = (360. / fmax(1., (double)NL - (double)frame->me.ab.f)) / ((double)tf * 3. + 1.);
+	m = (int)(floor(rlng / dlng) + floor(fmod(rlng, dlng) /
+		dlng - *lng + 0.5));
+	*lng = dlng * ((double)m + *lng);
 	if(*lng > 180.)
 		*lng = *lng - 360.;
 
