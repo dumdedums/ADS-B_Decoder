@@ -55,4 +55,5 @@ dkms.conf
 *.dwo
 
 # specific
+makefile
 test

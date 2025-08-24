@@ -1,5 +1,5 @@
-CC = gcc
-CFLAGS = -g
+CC = cc
+CFLAGS = -g -mno-ms-bitfields	#MS bitfields (default on Win) break packed structs
 LDFLAGS = -lm
 
 test: test.c decode.o adsb.h
