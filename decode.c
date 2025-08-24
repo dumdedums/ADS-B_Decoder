@@ -73,7 +73,7 @@ int parityCheck(const union AdsbFrame *frame)
 	data[1] = 0;
 	data[2] = 0;
 	for(i = 0;i < 11;i++)	//lowest 24 bits of frame is parity code
-		data[i] = frame->frame[i + 3];
+		data[i + 3] = frame->frame[i + 3];
 
 	i = 87;		//data bit from 0-87
 	b = 13;		//data[] block from 3-13
@@ -90,7 +90,7 @@ int parityCheck(const union AdsbFrame *frame)
 			data[b] = data[b] ^ (uint8_t)((CRC_GEN >> 24 - o) & 0xFF);
 			data[b-1] = data[b-1] ^ (uint8_t)((CRC_GEN >> 16 - o) & 0xFF);
 			data[b-2] = data[b-2] ^ (uint8_t)((CRC_GEN >> 8 - o) & 0xFF);
-			data[b-3] = data[b-3] ^ (uint8_t)((CRC_GEN << 7 - o) & 0xFF);
+			data[b-3] = data[b-3] ^ (uint8_t)((CRC_GEN << o) & 0xFF);
 		}
 		//the XOR operation is guaranteed to make the leftmost bit 0
 		i--;
