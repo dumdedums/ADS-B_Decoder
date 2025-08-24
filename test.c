@@ -50,9 +50,9 @@ int main()
 
 	//parity checks might get skipped in main app to save execution time
 	if(parityCheck(&f1))
-		printf("Parity Check Failed\n");
+		printf("Parity Check Failed\n\n");
 	else
-		printf("Parity Check Success\n");
+		printf("Parity Check Success\n\n");
 
 	double olat, olng;	//O'Hare Airport for relative location
 	olat = 41.978611;
@@ -84,10 +84,10 @@ int main()
 		(unsigned int)f2.ca, (unsigned int)f2.icao, (unsigned int)f2.pi);
 
 	getAirPos(&f2, tlat, tlng, &falt, &flat, &flng);
-	printf("Alt: %d, Latitude: %f, Longitude: %f\n", falt, flat, flng);
+	printf("Alt: %d, Latitude: %f, Longitude: %f\n\n", falt, flat, flng);
 
-	int track;
-	double speed, slat, slng;
+	int strack;
+	double sspeed, slat, slng;
 	union AdsbFrame f3;
 	f3.frame[13] = 0x8C;	//8C4841753A9A153237AEF0F275BE
 	f3.frame[12] = 0x48;
@@ -107,7 +107,7 @@ int main()
 	tlat = 51.990;		//reference for F3 test
 	tlng = 4.375;
 
-	switch(getSurfPos(&f3, tlat, tlng, &track, &speed, &slat, &slng))
+	switch(getSurfPos(&f3, tlat, tlng, &strack, &sspeed, &slat, &slng))
 	{
 	case 1:
 		printf("track invalid\n");
@@ -121,9 +121,74 @@ int main()
 
 	printf("F3: Surface Position Test\n\
 		DF: %u, CA: %u, ICAO: %#X, PI: %#X\n\
-		Track: %u, Speed: %f,\nLatitude: %f, Longitude %f\n",
+		Track: %u, Speed: %f,\nLatitude: %f, Longitude %f\n\n",
 		(unsigned int)f3.df, (unsigned int)f3.ca, (unsigned int)f3.icao,
-		(unsigned int)f3.pi, track, speed, slat, slng);
+		(unsigned int)f3.pi, strack, sspeed, slat, slng);
+
+	double atrk;
+	int aspd, vert;
+	union AdsbFrame f4;
+	f4.frame[13] = 0x8D;	//8D485020994409940838175B284F
+	f4.frame[12] = 0x48;	//Air Vel sub-type 1
+	f4.frame[11] = 0x50;
+	f4.frame[10] = 0x20;
+	f4.frame[9] = 0x99;
+	f4.frame[8] = 0x44;
+	f4.frame[7] = 0x09;
+	f4.frame[6] = 0x94;
+	f4.frame[5] = 0x08;
+	f4.frame[4] = 0x38;
+	f4.frame[3] = 0x17;
+	f4.frame[2] = 0x5B;
+	f4.frame[1] = 0x28;
+	f4.frame[0] = 0x4F;
+
+	switch(getAirVel(&f4, &atrk, &aspd, &vert))
+	{
+	case 0:
+		break;
+	default:
+		printf("return value error\n");
+	}
+
+	printf("F4.1: Airborne Velocity Test\n\
+		DF: %u, CA: %u, ICAO: %#X, PI: %#X\n\
+		Track: %f, Speed: %d, Vertical Rate: %d\n",
+		(unsigned int)f4.df, (unsigned int)f4.ca, (unsigned int)f4.icao,
+		(unsigned int)f4.pi, atrk, aspd, vert);
+
+	double atrk2;
+	int aspd2, vert2;
+	union AdsbFrame f42;
+	f42.frame[13] = 0x8D;	//8DA05F219B06B6AF189400CBC33F
+	f42.frame[12] = 0xA0;	//subtype 3
+	f42.frame[11] = 0x5F;
+	f42.frame[10] = 0x21;
+	f42.frame[9] = 0x9B;
+	f42.frame[8] = 0x06;
+	f42.frame[7] = 0xB6;
+	f42.frame[6] = 0xAF;
+	f42.frame[5] = 0x18;
+	f42.frame[4] = 0x94;
+	f42.frame[3] = 0x00;
+	f42.frame[2] = 0xCB;
+	f42.frame[1] = 0xC3;
+	f42.frame[0] = 0x3F;
+
+	switch(getAirVel(&f42, &atrk2, &aspd2, &vert2))
+	{
+	case 1:
+	case 2:
+		break;
+	default:
+		printf("return value error\n");
+	}
+
+	printf("F4.2: Airborne Velocity Test\n\
+		DF: %u, CA: %u, ICAO: %#X, PI: %#X\n\
+		Track: %f, Speed: %d, Vertical Rate: %d\n",
+		(unsigned int)f42.df, (unsigned int)f42.ca, (unsigned int)f42.icao,
+		(unsigned int)f42.pi, atrk2, aspd2, vert2);
 
 	return 0;
 }

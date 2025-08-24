@@ -295,7 +295,7 @@ int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr)
 
 		//potential for errors in atan2 if velocities close to 0
 		//see atan2 documentation of math.h in c std lib
-		*trk = atan2((double)vsn, (double)vew) * 180. / PI;
+		*trk = atan2((double)vew, (double)vsn) * 180. / PI;
 		if(*trk < 0)
 			*trk += 360;	//atan2 returns val between -pi and pi
 	}
