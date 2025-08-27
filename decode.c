@@ -55,7 +55,8 @@ static int cprDecode(const union AdsbFrame *frame, double rlat, double rlng,
 		NL = (int)floor(2.*PI / acos(1. - (1.-cos(PI/(2.*Nz))) /
 			pow(cos(*lat * PI/180), 2.)));
 
-	dlng = (360. / fmax(1., (double)NL - (double)frame->me.ab.f)) / ((double)tf * 3. + 1.);
+	dlng = (360. / fmax(1., (double)NL - (double)frame->me.ab.f)) /
+		((double)tf * 3. + 1.);
 	m = (int)(floor(rlng / dlng) + floor(fmod(rlng, dlng) /
 		dlng - *lng + 0.5));
 	*lng = dlng * ((double)m + *lng);
@@ -104,7 +105,7 @@ int parityCheck(const union AdsbFrame *frame)
 	return -1;
 }
 
-int getIdent(const union AdsbFrame *frame, char call[8], char type[8])
+int getIdent(const union AdsbFrame *frame, char call[9], char type[8])
 {
 	int i;
 
@@ -119,6 +120,7 @@ int getIdent(const union AdsbFrame *frame, char call[8], char type[8])
 	call[5] = (char)frame->me.id.c6;
 	call[6] = (char)frame->me.id.c7;
 	call[7] = (char)frame->me.id.c8;
+	call[8] = 0;
 
 	for(i = 0;i < 8;i++)
 	{
@@ -225,14 +227,14 @@ int getAirPos(const union AdsbFrame *frame, double rlat, double rlng, int *alt,
 }
 
 int getSurfPos(const union AdsbFrame *frame, double rlat, double rlng,
-	int *trk, double *spd, double *lat, double *lng)
+	double *trk, double *spd, double *lat, double *lng)
 {
 	int x = 0;
 	if(frame->me.sp.tc < 5 || frame->me.sp.tc > 8)
 		return -1;
 
 	if(frame->me.sp.s)	//actual track = TRK * 360 / 128
-		*trk = (int)round((double)frame->me.sp.trk * 2.8125);
+		*trk = (double)frame->me.sp.trk * 2.8125;
 	else
 		x = 1;
 
@@ -265,7 +267,7 @@ int getSurfPos(const union AdsbFrame *frame, double rlat, double rlng,
 	return x;
 }
 
-int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr)
+int getAirVel(const union AdsbFrame *frame, double *trk, double *spd, int *vr)
 {
 	int x = 0;
 	int vew, vsn;
@@ -291,7 +293,7 @@ int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr)
 			vew *= 4;
 			vsn *= 4;
 		}
-		*spd = (int)round(sqrt(pow((double)vew, 2.) + pow((double)vsn, 2.)));
+		*spd = sqrt(pow((double)vew, 2.) + pow((double)vsn, 2.));
 
 		//potential for errors in atan2 if velocities close to 0
 		//see atan2 documentation of math.h in c std lib
@@ -306,9 +308,9 @@ int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr)
 		else
 			x = 1;		//IAS
 
-		*spd = (int)frame->me.ava.as - 1;
+		*spd = (double)frame->me.ava.as - 1.;
 		if(frame->me.ava.st == 4)	//supersonic
-			*spd *= 4;
+			*spd *= 4.;
 
 		if(frame->me.ava.sh)
 			*trk = (double)frame->me.ava.hdg * (360. / 1024.);

@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <assert.h>
 #include "adsb.h"
 #include "decode.h"
 
@@ -86,7 +85,7 @@ int main()
 	getAirPos(&f2, tlat, tlng, &falt, &flat, &flng);
 	printf("Alt: %d, Latitude: %f, Longitude: %f\n\n", falt, flat, flng);
 
-	int strack;
+	double strack;
 	double sspeed, slat, slng;
 	union AdsbFrame f3;
 	f3.frame[13] = 0x8C;	//8C4841753A9A153237AEF0F275BE
@@ -121,12 +120,12 @@ int main()
 
 	printf("F3: Surface Position Test\n\
 		DF: %u, CA: %u, ICAO: %#X, PI: %#X\n\
-		Track: %u, Speed: %f,\nLatitude: %f, Longitude %f\n\n",
+		Track: %f, Speed: %f,\nLatitude: %f, Longitude %f\n\n",
 		(unsigned int)f3.df, (unsigned int)f3.ca, (unsigned int)f3.icao,
 		(unsigned int)f3.pi, strack, sspeed, slat, slng);
 
-	double atrk;
-	int aspd, vert;
+	double atrk, aspd;
+	int vert;
 	union AdsbFrame f4;
 	f4.frame[13] = 0x8D;	//8D485020994409940838175B284F
 	f4.frame[12] = 0x48;	//Air Vel sub-type 1
@@ -153,12 +152,12 @@ int main()
 
 	printf("F4.1: Airborne Velocity Test\n\
 		DF: %u, CA: %u, ICAO: %#X, PI: %#X\n\
-		Track: %f, Speed: %d, Vertical Rate: %d\n",
+		Track: %f, Speed: %f, Vertical Rate: %d\n",
 		(unsigned int)f4.df, (unsigned int)f4.ca, (unsigned int)f4.icao,
 		(unsigned int)f4.pi, atrk, aspd, vert);
 
-	double atrk2;
-	int aspd2, vert2;
+	double atrk2, aspd2;
+	int vert2;
 	union AdsbFrame f42;
 	f42.frame[13] = 0x8D;	//8DA05F219B06B6AF189400CBC33F
 	f42.frame[12] = 0xA0;	//subtype 3
@@ -186,7 +185,7 @@ int main()
 
 	printf("F4.2: Airborne Velocity Test\n\
 		DF: %u, CA: %u, ICAO: %#X, PI: %#X\n\
-		Track: %f, Speed: %d, Vertical Rate: %d\n",
+		Track: %f, Speed: %f, Vertical Rate: %d\n",
 		(unsigned int)f42.df, (unsigned int)f42.ca, (unsigned int)f42.icao,
 		(unsigned int)f42.pi, atrk2, aspd2, vert2);
 

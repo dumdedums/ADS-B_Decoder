@@ -35,7 +35,7 @@ int parityCheck(const union AdsbFrame *frame);
 	Returns 0 if no errors
 	Gets call sign and aircraft type
 */
-int getIdent(const union AdsbFrame *frame, char call[8], char type[8]);
+int getIdent(const union AdsbFrame *frame, char call[9], char type[8]);
 
 /*
 	getAirPos
@@ -70,7 +70,7 @@ int getAirPos(const union AdsbFrame *frame, double rlat, double rlng,
 	Use nearest airport as relative position. Works within 45nm (zone size).
 */
 int getSurfPos(const union AdsbFrame *frame, double rlat, double rlng,
-	int *trk, double *spd, double *lat, double *lng);
+	double *trk, double *spd, double *lat, double *lng);
 
 /*
 	getAirVel
@@ -107,4 +107,4 @@ int getSurfPos(const union AdsbFrame *frame, double rlat, double rlng,
 
 	Currently no altitude difference is reported.
 */
-int getAirVel(const union AdsbFrame *frame, double *trk, int *spd, int *vr);
+int getAirVel(const union AdsbFrame *frame, double *trk, double *spd, int *vr);
