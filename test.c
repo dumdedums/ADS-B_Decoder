@@ -32,8 +32,8 @@ int main()
 		(unsigned int)f1.frame[3], (unsigned int)f1.frame[2],
 		(unsigned int)f1.frame[1], (unsigned int)f1.frame[0]);
 
-	printf("F1: Callsign and Parity Test\n\
-		DF: %u, CA: %u, ICAO: %#X, PI: %#X\n", (unsigned int)f1.df,
+	printf("F1: Callsign and Parity Test\n"
+		"DF: %u, CA: %u, ICAO: %#X, PI: %#X\n", (unsigned int)f1.df,
 		(unsigned int)f1.ca, (unsigned int)f1.icao, (unsigned int)f1.pi);
 	printf("Raw Message: %#X%X%X%X%X%X%X, TC:%u\n", (unsigned int)f1.me.me[6],
 		(unsigned int)f1.me.me[5], (unsigned int)f1.me.me[4],
@@ -78,8 +78,8 @@ int main()
 	f2.frame[1] = 0x63;
 	f2.frame[0] = 0xA7;
 
-	printf("F2: Position Test\n\
-		DF: %u, CA: %u, ICAO: %#X, PI: %#X\n", (unsigned int)f2.df,
+	printf("F2: Position Test\n"
+		"DF: %u, CA: %u, ICAO: %#X, PI: %#X\n", (unsigned int)f2.df,
 		(unsigned int)f2.ca, (unsigned int)f2.icao, (unsigned int)f2.pi);
 
 	getAirPos(&f2, tlat, tlng, &falt, &flat, &flng);
@@ -118,9 +118,9 @@ int main()
 		printf("track and speed invalid\n");
 	}
 
-	printf("F3: Surface Position Test\n\
-		DF: %u, CA: %u, ICAO: %#X, PI: %#X\n\
-		Track: %f, Speed: %f,\nLatitude: %f, Longitude %f\n\n",
+	printf("F3: Surface Position Test\n"
+		"DF: %u, CA: %u, ICAO: %#X, PI: %#X\n"
+		"Track: %f, Speed: %f,\nLatitude: %f, Longitude %f\n\n",
 		(unsigned int)f3.df, (unsigned int)f3.ca, (unsigned int)f3.icao,
 		(unsigned int)f3.pi, strack, sspeed, slat, slng);
 
@@ -150,9 +150,9 @@ int main()
 		printf("return value error\n");
 	}
 
-	printf("F4.1: Airborne Velocity Test\n\
-		DF: %u, CA: %u, ICAO: %#X, PI: %#X\n\
-		Track: %f, Speed: %f, Vertical Rate: %d\n",
+	printf("F4.1: Airborne Velocity Test\n"
+		"DF: %u, CA: %u, ICAO: %#X, PI: %#X\n"
+		"Track: %f, Speed: %f, Vertical Rate: %d\n",
 		(unsigned int)f4.df, (unsigned int)f4.ca, (unsigned int)f4.icao,
 		(unsigned int)f4.pi, atrk, aspd, vert);
 
@@ -183,9 +183,9 @@ int main()
 		printf("return value error\n");
 	}
 
-	printf("F4.2: Airborne Velocity Test\n\
-		DF: %u, CA: %u, ICAO: %#X, PI: %#X\n\
-		Track: %f, Speed: %f, Vertical Rate: %d\n",
+	printf("F4.2: Airborne Velocity Test\n"
+		"DF: %u, CA: %u, ICAO: %#X, PI: %#X\n"
+		"Track: %f, Speed: %f, Vertical Rate: %d\n",
 		(unsigned int)f42.df, (unsigned int)f42.ca, (unsigned int)f42.icao,
 		(unsigned int)f42.pi, atrk2, aspd2, vert2);
 
