@@ -24,19 +24,15 @@ int main(int argc, char *argv[])
 	//read input from rtl_adsb.exe data logs
 	log = fopen("adsblog.txt", "r");
 
-	while(1)
+	//printf("File Pos: %ld\n", ftell(log));
+
+	while(fscanf(log, " *%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx"
+		"%2hhx%2hhx%2hhx%2hhx%2hhx;",
+		&f1.frame[13], &f1.frame[12], &f1.frame[11], &f1.frame[10],
+		&f1.frame[9], &f1.frame[8], &f1.frame[7], &f1.frame[6],
+		&f1.frame[5], &f1.frame[4], &f1.frame[3], &f1.frame[2],
+		&f1.frame[1], &f1.frame[0]) != EOF)
 	{
-		if(fscanf(log, "*%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx"
-			"%2hhx%2hhx%2hhx;",
-			&f1.frame[13], &f1.frame[12], &f1.frame[11],
-			&f1.frame[10], &f1.frame[9], &f1.frame[8],
-			&f1.frame[7], &f1.frame[6], &f1.frame[5], &f1.frame[4],
-			&f1.frame[3], &f1.frame[2], &f1.frame[1],
-			&f1.frame[0]) == EOF)
-		{
-			printf("Reading complete\n");
-			break;
-		}
 		if((f1.df == 17 || f1.df == 18) &&	//ADS-B & TIS-B messages
 			parityCheck(&f1) == 0)
 		{
@@ -90,19 +86,20 @@ int main(int argc, char *argv[])
 
 			//TODO: possible future handling of aircraft status
 			default:
-				printf("Unhandled TC Likely Status Report\n\n");
+				printf("Status Report\nICAO: %X\n\n", f1.icao);
 			}
 		}
-		/*else
-			printf("corrupt frame: %.2X%.2X%.2X%.2X%.2X%.2X%.2X"
-				"%.2X%.2X%.2X%.2X%.2X%.2X%.2X\n",
+		else
+			printf("untranslated: %.2X%.2X%.2X%.2X%.2X%.2X%.2X"
+				"%.2X%.2X%.2X%.2X%.2X%.2X%.2X\n\n",
 				f1.frame[13], f1.frame[12], f1.frame[11],
 				f1.frame[10], f1.frame[9], f1.frame[8],
 				f1.frame[7], f1.frame[6], f1.frame[5], f1.frame[4],
 				f1.frame[3], f1.frame[2], f1.frame[1],
-				f1.frame[0], f1.frame[1], f1.frame[0]);*/
-		fseek(log, 17, SEEK_CUR);
+				f1.frame[0], f1.frame[1], f1.frame[0]);
+		//printf("File Pos: %ld\n", ftell(log));
 	}
+	printf("Reading complete\n");
 	fclose(log);
 
 	//TODO: piped input from rtl_sdr or other raw data stream
