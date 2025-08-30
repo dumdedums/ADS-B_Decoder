@@ -8,6 +8,25 @@
 #include "decode.h"
 #include "logger.h"
 
+static FILE *logstream;
+
+/*
+	termination
+	This function is a special termination handler
+	if we need to do cleanup when terminating program.
+
+	This might be necessary with the named pipes
+*/
+/*void termination(int sig)
+{
+	printf("termination handler running\n");
+	if(logstream != NULL)
+		fclose(logstream);
+	signal(sig, SIG_DFL);
+	raise(sig);
+	return;
+}*/
+
 /*
 	main
 	Runs through logs or grabs live input from RTL-SDR
@@ -44,7 +63,6 @@ int main(int argc, char *argv[])
 
 	//stream to read from
 	//can be a text file or potentially a named pipe
-	FILE *log;
 	char filename[20];
 
 	//O'Hare Airport as relative position, unless specified in args
@@ -55,6 +73,7 @@ int main(int argc, char *argv[])
 
 	int opt;
 	char *optstring = "rdcpb";
+
 	//flag detection
 	while((opt = getopt(argc, argv, optstring)) != -1)
 	{
@@ -98,7 +117,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	struct plane *planes = (struct plane*)calloc(cache, sizeof(struct plane));
+	struct Plane *planes = (struct Plane*)calloc(cache, sizeof(struct Plane));
 
 	if(isBinary == -1)
 	{
@@ -108,10 +127,10 @@ int main(int argc, char *argv[])
 	else if(isBinary == 0)
 	{
 		//read input from rtl_adsb.exe data logs
-		log = fopen(filename, "r");
+		logstream = fopen(filename, "r");
 
-		while(fscanf(log, " *%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx"
-			"%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx;", &f1.frame[13],
+		while(fscanf(logstream, " *%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx"
+			"%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx;", &f1.frame[13],
 			&f1.frame[12], &f1.frame[11], &f1.frame[10],
 			&f1.frame[9], &f1.frame[8], &f1.frame[7], &f1.frame[6],
 			&f1.frame[5], &f1.frame[4], &f1.frame[3], &f1.frame[2],
@@ -138,6 +157,10 @@ int main(int argc, char *argv[])
 						printf("Identification Message\nICAO: %X, "
 							"Callsign: %s, Aircraft Type: %s\n\n",
 							f1.icao, f1call, f1type);
+
+					logPlane(planes, cache, f1.icao, f1call,
+						f1type, f1lat, f1lng, f1trk, f1spd,
+						f1alt, f1vr, ICAOFL | IDENTVALID);
 					break;
 
 				case 5: case 6: case 7: case 8:
@@ -152,6 +175,10 @@ int main(int argc, char *argv[])
 							"Track: %f, Speed: %f, Position: "
 							"%f, %f\n\n",
 							f1.icao, f1trk, f1spd, f1lat, f1lng);
+
+					logPlane(planes, cache, f1.icao, f1call,
+						f1type, f1lat, f1lng, f1trk, f1spd,
+						f1alt, f1vr, ICAOFL | POSVALID | TRKVALID | SPDVALID);
 					break;
 
 				case 9: case 10: case 11: case 12: case 13: case 14:
@@ -164,6 +191,10 @@ int main(int argc, char *argv[])
 						printf("Aerial Position Message\nICAO: %X, "
 							"Altitude: %d, Position: %f, %f\n\n",
 							f1.icao, f1alt, f1lat, f1lng);
+
+					logPlane(planes, cache, f1.icao, f1call,
+						f1type, f1lat, f1lng, f1trk, f1spd,
+						f1alt, f1vr, ICAOFL | POSVALID | ALTVALID);
 					break;
 
 				case 19:
@@ -174,6 +205,10 @@ int main(int argc, char *argv[])
 							"Track: %f, Speed: %f, Vertical Rate: "
 							"%d\n\n",
 							f1.icao, f1trk, f1spd, f1vr);
+
+					logPlane(planes, cache, f1.icao, f1call,
+						f1type, f1lat, f1lng, f1trk, f1spd,
+						f1alt, f1vr, ICAOFL | TRKVALID | SPDVALID | VERTVALID);
 					break;
 
 				//TODO: possible future handling of aircraft status
@@ -198,7 +233,9 @@ int main(int argc, char *argv[])
 		printf("not implemented yet\n");
 	}
 	printf("Reading complete\n");
-	fclose(log);
+	updateDisplay(planes, cache);
+	fclose(logstream);
+	free(planes);
 
 	return 0;
 }

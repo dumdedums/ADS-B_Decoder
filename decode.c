@@ -276,7 +276,7 @@ int getAirVel(const union AdsbFrame *frame, double *trk, double *spd, int *vr)
 
 	if(frame->me.avg.st == 1 || frame->me.avg.st == 2)
 	{
-		if(frame->me.avg.vew == 0)
+		if(frame->me.avg.vew == 0 || frame->me.avg.vns == 0)
 		{
 			x = 10;
 			goto INVALID_VEL;	//velocities invalid if 0
@@ -308,6 +308,11 @@ int getAirVel(const union AdsbFrame *frame, double *trk, double *spd, int *vr)
 		else
 			x = 1;		//IAS
 
+		if(frame->me.ava.as == 0)
+		{
+			x += 10;
+			goto INVALID_VEL;
+		}
 		*spd = (double)frame->me.ava.as - 1.;
 		if(frame->me.ava.st == 4)	//supersonic
 			*spd *= 4.;
