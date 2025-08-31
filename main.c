@@ -16,13 +16,16 @@ static FILE *savestream = NULL;
 	This function is a special termination handler
 	if we need to do cleanup when terminating program.
 
-	This might be necessary with the named pipes
+	This might be necessary because the default handling
+	for most termination signals closes all files
 */
-/*void termination(int sig)
+/*static void term_handler(int sig)
 {
 	printf("termination handler running\n");
 	if(logstream != NULL)
 		fclose(logstream);
+	if(savestream != NULL)
+		fclose(savestream);
 	signal(sig, SIG_DFL);
 	raise(sig);
 	return;
@@ -51,6 +54,14 @@ static FILE *savestream = NULL;
 
 	by default the program should use the rtl-sdr drivers to read data
 	filename currently has a 20 char limit, open to change later
+
+	In order to accept input from stdin,
+	filename should be swapped for "-" for now.
+	This is the same syntax that dump1090 uses,
+	not that I'm copying them, it's just more standardized.
+	I originally thought of using "stdin" as the keyword,
+	the problem is that "stdin" could be a real filename.
+	Well "-" could be a filename also.
 */
 int main(int argc, char *argv[])
 {
@@ -137,7 +148,10 @@ int main(int argc, char *argv[])
 	else if(isBinary == 0)
 	{
 		//read input from rtl_adsb.exe data logs
-		logstream = fopen(filename, "r");
+		if(filename[0] == '-' && filename[1] == 0)
+			logstream = stdin;
+		else
+			logstream = fopen(filename, "r");
 
 		while(fscanf(logstream, " *%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx"
 			"%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx;", &f1.frame[13],
