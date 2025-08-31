@@ -87,9 +87,12 @@ static char *formatDisplay(struct Plane buf[], int bufsize)
 
 	for(i = 0;i < bufsize;i++)
 	{
-		if(buf[i].pflags & ICAOFL == 0)
+		if(buf[i].pflags & ICAOFL)
+		{
+			snprintf(icao, 7, "%.6X", buf[i].icao);
+		}
+		else
 			break;
-		snprintf(icao, 7, "%.6X", buf[i].icao);
 		if(buf[i].pflags & IDENTVALID)
 		{
 			//sprintf to remove trailing spaces in call
