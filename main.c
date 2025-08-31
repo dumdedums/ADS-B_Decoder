@@ -8,7 +8,8 @@
 #include "decode.h"
 #include "logger.h"
 
-static FILE *logstream;
+static FILE *logstream = NULL;
+static FILE *savestream = NULL;
 
 /*
 	termination
@@ -40,12 +41,12 @@ static FILE *logstream;
 	Current hex message format output to read from logs:
 	"*<hex data>;\n" dump1090 hex logs might be a different format
 
-	main [-r <lat>,<long>][-d][-c <size>][-p|-b <filename>]
+	main [-r <lat>,<long>][-d][-c <size>][-p|-b <filename>][-s <filename>]
 	Arguments:
 	-r <latitude>, <longitude>: change relative position
 	-d: show debug output
 	-c <size>: change airplane cache size (def: 10)
-	-p <filename>: piped hex messages from logfile
+	-p <filename>: piped hex messages from named pipe or log file
 	-b <filename>: piped binary stream to work with any SDR
 
 	by default the program should use the rtl-sdr drivers to read data
@@ -63,7 +64,9 @@ int main(int argc, char *argv[])
 
 	//stream to read from
 	//can be a text file or potentially a named pipe
-	char filename[20];
+	char filename[20], savename[20];
+	filename[0] = 0;
+	savename[0] = 0;
 
 	//O'Hare Airport as relative position, unless specified in args
 	double rlat = 41.978611, rlng = -87.904722;
@@ -72,7 +75,7 @@ int main(int argc, char *argv[])
 	char isBinary = -1;
 
 	int opt;
-	char *optstring = "rdcpb";
+	char *optstring = "rdcpbs";
 
 	//flag detection
 	while((opt = getopt(argc, argv, optstring)) != -1)
@@ -105,12 +108,16 @@ int main(int argc, char *argv[])
 		case 'b':
 			if(isBinary != -1)
 			{
-				printf("can't specify multiple files\n");
+				printf("can't specify multiple input files\n");
 				return -1;
 			}
 			sscanf(argv[optind++], "%20s", filename);
 			isBinary = 1;
 			printf("filename is %s\n", filename);
+			break;
+		case 's':
+			sscanf(argv[optind++], "%20s", savename);
+			printf("save file is %s\n", savename);
 			break;
 		case '?':
 			printf("%c is not a valid option\n", optopt);
@@ -118,6 +125,9 @@ int main(int argc, char *argv[])
 	}
 
 	struct Plane *planes = (struct Plane*)calloc(cache, sizeof(struct Plane));
+
+	if(savename[0] != 0)
+		savestream = fopen(savename, "a");
 
 	if(isBinary == -1)
 	{
@@ -234,6 +244,11 @@ int main(int argc, char *argv[])
 	}
 	printf("Reading complete\n");
 	updateDisplay(planes, cache);
+	if(savestream)
+	{
+		logToFile(planes, cache, savestream);
+		fclose(savestream);
+	}
 	fclose(logstream);
 	free(planes);
 

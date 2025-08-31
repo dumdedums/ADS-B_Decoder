@@ -160,9 +160,54 @@ void updateDisplay(struct Plane buf[], int bufsize)
 
 void logToFile(struct Plane buf[], int bufsize, FILE *save)
 {
-	char *disp;
-	disp = formatDisplay(buf, bufsize);
-
-	free(disp);
+	int i;
+	char call[9];	//temp buffer
+	if(save == NULL)
+		return;
+	//log in the file plane data
+	for(i = 0;i < bufsize;i++)
+	{
+		if(buf[i].pflags & ICAOFL)
+			fprintf(save, "%.6X,", buf[i].icao);
+		else
+			break;
+		if(buf[i].pflags & IDENTVALID)
+		{
+			sscanf(buf[i].call, "%s", call);
+			fprintf(save, "%s,%s,", call, buf[i].type);
+		}
+		else
+			fprintf(save, ",,");
+		if(buf[i].pflags & POSVALID)
+		{
+			fprintf(save, "%f,%f,", buf[i].lat, buf[i].lng);
+		}
+		else
+			fprintf(save, ",,");
+		if(buf[i].pflags & TRKVALID)
+		{
+			fprintf(save, "%f,", buf[i].trk);
+		}
+		else
+			fputc(',', save);
+		if(buf[i].pflags & SPDVALID)
+		{
+			fprintf(save, "%f,", buf[i].spd);
+		}
+		else
+			fputc(',', save);
+		if(buf[i].pflags & ALTVALID)
+		{
+			fprintf(save, "%d,", buf[i].alt);
+		}
+		else
+			fputc(',', save);
+		if(buf[i].pflags & VERTVALID)
+		{
+			fprintf(save, "%d\n", buf[i].vert);
+		}
+		else
+			fputc('\n', save);
+	}
 	return;
 }
