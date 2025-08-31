@@ -38,6 +38,7 @@ void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 
 	buf[oldest].pflags |= fl;
 	buf[oldest].icao = icao;
+	buf[oldest].lstUpd = now;
 
 	if(fl & IDENTVALID)
 	{
@@ -204,10 +205,11 @@ void logToFile(struct Plane buf[], int bufsize, FILE *save)
 			fputc(',', save);
 		if(buf[i].pflags & VERTVALID)
 		{
-			fprintf(save, "%d\n", buf[i].vert);
+			fprintf(save, "%d,", buf[i].vert);
 		}
 		else
-			fputc('\n', save);
+			fputc(',', save);
+		fputs(ctime(&buf[i].lstUpd), save);
 	}
 	return;
 }
