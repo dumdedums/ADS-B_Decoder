@@ -36,34 +36,34 @@ void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 		}
 	}
 
-	buf[i].pflags |= fl;
-	buf[i].icao = icao;
+	buf[oldest].pflags |= fl;
+	buf[oldest].icao = icao;
 
 	if(fl & IDENTVALID)
 	{
-		strcpy(buf[i].call, call);
-		strcpy(buf[i].type, type);
+		strcpy(buf[oldest].call, call);
+		strcpy(buf[oldest].type, type);
 	}
 	if(fl & POSVALID)
 	{
-		buf[i].lat = lat;
-		buf[i].lng = lng;
+		buf[oldest].lat = lat;
+		buf[oldest].lng = lng;
 	}
 	if(fl & TRKVALID)
 	{
-		buf[i].trk = trk;
+		buf[oldest].trk = trk;
 	}
 	if(fl & SPDVALID)
 	{
-		buf[i].spd = spd;
+		buf[oldest].spd = spd;
 	}
 	if(fl & ALTVALID)
 	{
-		buf[i].alt = alt;
+		buf[oldest].alt = alt;
 	}
 	if(fl & VERTVALID)
 	{
-		buf[i].vert = vert;
+		buf[oldest].vert = vert;
 	}
 
 	return;
@@ -76,7 +76,7 @@ void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 static char *formatDisplay(struct Plane buf[], int bufsize)
 {
 	int i;
-	char *disp, temp[80], icao[7], call[9], type[7], lat[9], lng[9],
+	char *disp, temp[70], icao[7], call[9], type[7], lat[9], lng[9],
 		trk[7], spd[7], alt[7], vert[7];
 	disp = (char*)malloc(sizeof(char) * (79*50+1));
 	disp[0] = 0;
@@ -85,9 +85,9 @@ static char *formatDisplay(struct Plane buf[], int bufsize)
 	{
 		if(buf[i].pflags & ICAOFL == 0)
 			break;
+		snprintf(icao, 7, "%.6X", buf[i].icao);
 		if(buf[i].pflags & IDENTVALID)
 		{
-			snprintf(icao, 7, "%.6X", buf[i].icao);
 			strcpy(call, buf[i].call);
 			strcpy(type, buf[i].type);
 		}
@@ -98,8 +98,8 @@ static char *formatDisplay(struct Plane buf[], int bufsize)
 		}
 		if(buf[i].pflags & POSVALID)
 		{
-			snprintf(lat, 9, "%.8f", buf[i].lat);
-			snprintf(lng, 9, "%.8f", buf[i].lng);
+			snprintf(lat, 9, "% .7f", buf[i].lat);
+			snprintf(lng, 9, "% .7f", buf[i].lng);
 		}
 		else
 		{
@@ -134,9 +134,9 @@ static char *formatDisplay(struct Plane buf[], int bufsize)
 		//79 chars total per line
 		sprintf(temp, "%6s %8s %6s %8s %8s %6s %6s %6s %6s\n",
 			icao, call, type, lat, lng, trk, spd, alt, vert);
-		memcpy((void*)disp + 79*i, temp, 79);
+		memcpy((void*)disp + 69*i, temp, 69);	//char 69*i might be a null anyway
 	}
-	disp[79*i] = 0;		//null terminator for string
+	disp[69*i] = 0;		//null terminator for string
 	return disp;
 }
 
