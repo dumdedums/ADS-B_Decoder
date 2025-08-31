@@ -73,4 +73,4 @@ void updateDisplay(struct Plane buf[], int bufsize);
 	Same thing as updateDisplay but to a file
 	They will probably run the same helper function.
 */
-void logToFile(struct Plane buf[], int bufsize);
+void logToFile(struct Plane buf[], int bufsize, FILE *save);

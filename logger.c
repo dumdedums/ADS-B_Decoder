@@ -78,17 +78,22 @@ static char *formatDisplay(struct Plane buf[], int bufsize)
 	int i;
 	char *disp, temp[70], icao[7], call[9], type[7], lat[9], lng[9],
 		trk[7], spd[7], alt[7], vert[7];
-	disp = (char*)malloc(sizeof(char) * (79*50+1));
-	disp[0] = 0;
+	disp = (char*)malloc(sizeof(char) * (79*(bufsize+1)+2));
 
-	for(i = 0;i < 50 && i < bufsize;i++)
+	sprintf(temp, "%6s %8s %6s %8s %8s %6s %6s %6s %6s\n",
+		"ICAO", "CALLSIGN", "TYPE", "LATITUDE", "LNGITUDE", "TRACK",
+		"SPEED", "ALT", "CLIMB");
+	memcpy((void*)disp, temp, 69);
+
+	for(i = 0;i < bufsize;i++)
 	{
 		if(buf[i].pflags & ICAOFL == 0)
 			break;
 		snprintf(icao, 7, "%.6X", buf[i].icao);
 		if(buf[i].pflags & IDENTVALID)
 		{
-			strcpy(call, buf[i].call);
+			//sprintf to remove trailing spaces in call
+			sscanf(buf[i].call, "%s", call);
 			strcpy(type, buf[i].type);
 		}
 		else
@@ -126,7 +131,7 @@ static char *formatDisplay(struct Plane buf[], int bufsize)
 			strcpy(alt, "UNOWEN");
 		if(buf[i].pflags & VERTVALID)
 		{
-			snprintf(vert, 7, "%6f", buf[i].vert);
+			snprintf(vert, 7, "%6d", buf[i].vert);
 		}
 		else
 			strcpy(vert, "UNOWEN");
@@ -134,9 +139,10 @@ static char *formatDisplay(struct Plane buf[], int bufsize)
 		//79 chars total per line
 		sprintf(temp, "%6s %8s %6s %8s %8s %6s %6s %6s %6s\n",
 			icao, call, type, lat, lng, trk, spd, alt, vert);
-		memcpy((void*)disp + 69*i, temp, 69);	//char 69*i might be a null anyway
+		memcpy((void*)disp + 69*(i+1), temp, 69);
 	}
-	disp[69*i] = 0;		//null terminator for string
+	disp[69*(i+1)] = '\n';	//extra newline for easier reading
+	disp[69*(i+1)+1] = 0;	//null terminator
 	return disp;
 }
 
@@ -149,7 +155,11 @@ void updateDisplay(struct Plane buf[], int bufsize)
 	return;
 }
 
-void logToFile(struct Plane buf[], int bufsize)
+void logToFile(struct Plane buf[], int bufsize, FILE *save)
 {
+	char *disp;
+	disp = formatDisplay(buf, bufsize);
+
+	free(disp);
 	return;
 }
