@@ -301,6 +301,16 @@ int main(int argc, char *argv[])
 					if(debug)
 						printf("Status Report\nICAO: %X\n\n", f1.icao);
 				}
+
+				//more efficient to do this in separate thread but whatever
+				//displays data every 5 seconds and writes to log file
+				if(difftime(time(NULL), lastLog) > 5.)
+				{
+					time(&lastLog);
+					updateDisplay(planes, cache);
+					if(savestream)
+						logToFile(planes, cache, savestream);
+				}
 			}
 			else if(debug)
 				printf("untranslated: %.2X%.2X%.2X%.2X%.2X%.2X%.2X"
