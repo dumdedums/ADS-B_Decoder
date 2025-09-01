@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 		//maybe use sigaction in the future?
 		signal(SIGINT, term_handler);
 		signal(SIGTERM, term_handler);
-		signal(SIGHUP, term_handler);
+		//signal(SIGHUP, term_handler);
 
 		time(&lastLog);
 
