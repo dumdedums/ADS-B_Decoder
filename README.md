@@ -9,21 +9,22 @@ The current plan is to make sure that live piped data is correctly read and logg
 and lastly to be able to read the binary data from pipes or files along with interacting with the RTL-SDR using the drivers.
 
 ## Building and Using the Project
-main \[\-d\]\[\-r *latitude* *longitude*\]\[\-p|\-b *filename*\]\[\-s *filename*\]\[\-c *size*\]\
-\-r *latitude* *longitude*\
-	Change the relative latitude and longitude to your location. (The default location is O'Hare Airport.)\
-\-p *filename*\
-	Specify an input file that contains a hex message data dump. This could be FIFO file or "\-" for stdin.\
-\-b *filename*\
-	Input file for binary stream of I and Q values. Filename syntax is the same as \-p.\
-\-s *filename*\
-	Specifies a save file to save data in a CSV format. The ordering is ICAO, callsign, aircraft type, latitude, longitude, track, speed, altitude, vertical rate, timestamp.\
-\-d\
-	Turns on debug mode which prints extra messages (useless and lots of clutter).
-\-c *size*\
-	Specifies the size of the airplane cache (how many airplanes can be tracked at once before overwriting old airplane entries).
-	If logging is turned on the whole cache is logged at the same time the display is updated, and log entries are appended, not erased.\
+<p>main [-d][-r <i>latitude</i> <i>longitude</i>][-p|-b <i>filename</i>][-s <i>filename</i>][-c <i>size</i>]<br>
+-r <i>latitude</i> <i>longitude</i><br>
+	&emsp;Change the relative latitude and longitude to your location. (The default location is O'Hare Airport.)<br>
+-p <i>filename</i><br>
+	&emsp;Specify an input file that contains a hex message data dump. This could be FIFO file or "-" for stdin.<br>
+-b <i>filename</i><br>
+	&emsp;Input file for binary stream of I and Q values. Filename syntax is the same as -p.<br>
+-s <i>filename</i><br>
+	&emsp;Specifies a save file to save data in a CSV format. The ordering is ICAO, callsign, aircraft type, latitude, longitude, track, speed, altitude, vertical rate, timestamp.<br>
+-d<br>
+	&emsp;Turns on debug mode which prints extra messages (useless and lots of clutter).<br>
+-c <i>size</i><br>
+	&emsp;Specifies the size of the airplane cache (how many airplanes can be tracked at once before overwriting old airplane entries).
+	If logging is turned on the whole cache is logged at the same time the display is updated, and log entries are appended, not erased.</p>
 If no options are used the program will try and communicate with the RTL-SDR directly (Not yet implemented).
+Built using `make main`.
 
 ## Why?
 There are much better tools out there to decode ADS-B signals from SDRs, take for example [readsb](https://github.com/Mictronics/readsb), so why create a new one?
@@ -59,3 +60,4 @@ I will probably try and use [GMT (Generic Mapping Tools)](https://github.com/Gen
 I currently only plan on creating static maps showing the most recent locations of each plane,
 the inputs of this component will include things such as showing *all* location logs of planes,
 or possibly paths if GMT makes this easy enough, along with a timeout so extremely old location data doesn't show up. Maybe even show locations for a time frame.
+
