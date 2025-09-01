@@ -20,15 +20,35 @@ static FILE *savestream = NULL;
 	This might be necessary because the default handling
 	for most termination signals closes all files
 */
-/*static void term_handler(int sig)
+static void term_handler(int sig)
 {
+	static volatile sig_atomic_t terminating = 0;
 	printf("termination handler running\n");
+	if(terminating)
+		raise(sig);
+	terminating = 1;
+
+	//cleanup
 	if(logstream != NULL)
 		fclose(logstream);
 	if(savestream != NULL)
 		fclose(savestream);
-	signal(sig, SIG_DFL);
+
+	//termination
+	signal(sig, SIG_DFL);	//this should automatically done
 	raise(sig);
+	return;			//doesn't occur
+}
+
+/*
+	pipe_error
+	If using named pipes, use this to debug broken pipes. (SIGPIPE)
+	Normally a pipe needs to be open for reading before writing.
+	Also occurs when outputting to a socket that isn't connected.
+*/
+/*static void pipe_error(int sig)
+{
+	printf("pipe broken\n");
 	return;
 }*/
 
@@ -155,6 +175,11 @@ int main(int argc, char *argv[])
 			logstream = stdin;
 		else
 			logstream = fopen(filename, "r");
+
+		//maybe use sigaction in the future?
+		signal(SIGINT, term_handler);
+		signal(SIGTERM, term_handler);
+		signal(SIGHUP, term_handler);
 
 		time(&lastLog);
 
@@ -302,15 +327,6 @@ int main(int argc, char *argv[])
 						printf("Status Report\nICAO: %X\n\n", f1.icao);
 				}
 
-				//more efficient to do this in separate thread but whatever
-				//displays data every 5 seconds and writes to log file
-				if(difftime(time(NULL), lastLog) > 5.)
-				{
-					time(&lastLog);
-					updateDisplay(planes, cache);
-					if(savestream)
-						logToFile(planes, cache, savestream);
-				}
 			}
 			else if(debug)
 				printf("untranslated: %.2X%.2X%.2X%.2X%.2X%.2X%.2X"
@@ -320,6 +336,15 @@ int main(int argc, char *argv[])
 					f1.frame[7], f1.frame[6], f1.frame[5], f1.frame[4],
 					f1.frame[3], f1.frame[2], f1.frame[1],
 					f1.frame[0], f1.frame[1], f1.frame[0]);
+			//more efficient to do this in separate thread but whatever
+			//displays data every 5 seconds and writes to log file
+			if(difftime(time(NULL), lastLog) > 5.)
+			{
+				time(&lastLog);
+				updateDisplay(planes, cache);
+				if(savestream)
+					logToFile(planes, cache, savestream);
+			}
 		}
 	}
 	else
