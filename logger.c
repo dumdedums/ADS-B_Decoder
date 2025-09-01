@@ -77,14 +77,15 @@ void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 static char *formatDisplay(struct Plane buf[], int bufsize)
 {
 	int i;
-	char *disp, temp[70], icao[7], call[9], type[7], lat[9], lng[9],
-		trk[7], spd[7], alt[7], vert[7];
-	disp = (char*)malloc(sizeof(char) * (79*(bufsize+1)+2));
+	struct tm *ltime;
+	char *disp, temp[79], icao[7], call[9], type[7], lat[9], lng[9],
+		trk[7], spd[7], alt[7], vert[7], timestr[9];
+	disp = (char*)malloc(sizeof(char) * (74*(bufsize+1)+2));
 
-	sprintf(temp, "%6s %8s %6s %8s %8s %6s %6s %6s %6s\n",
+	sprintf(temp, "%6s %8s %6s %8s %8s %6s %6s %6s %6s %8s\n",
 		"ICAO", "CALLSIGN", "TYPE", "LATITUDE", "LNGITUDE", "TRACK",
-		"SPEED", "ALT", "CLIMB");
-	memcpy((void*)disp, temp, 69);
+		"SPEED", "ALT", "CLIMB", "TIME");
+	memcpy((void*)disp, temp, 78);
 
 	for(i = 0;i < bufsize;i++)
 	{
@@ -140,13 +141,18 @@ static char *formatDisplay(struct Plane buf[], int bufsize)
 		else
 			strcpy(vert, "UNOWEN");
 
+		ltime = localtime(&buf[i].lstUpd);
+		sprintf(timestr, "%.2d:%.2d:%.2d",
+			ltime->tm_hour, ltime->tm_min, ltime->tm_sec);
+
 		//79 chars total per line
-		sprintf(temp, "%6s %8s %6s %8s %8s %6s %6s %6s %6s\n",
-			icao, call, type, lat, lng, trk, spd, alt, vert);
-		memcpy((void*)disp + 69*(i+1), temp, 69);
+		sprintf(temp, "%6s %8s %6s %8s %8s %6s %6s %6s %6s %8s\n",
+			icao, call, type, lat, lng, trk, spd, alt, vert,
+			timestr);
+		memcpy((void*)disp + 78*(i+1), temp, 78);
 	}
-	disp[69*(i+1)] = '\n';	//extra newline for easier reading
-	disp[69*(i+1)+1] = 0;	//null terminator
+	disp[78*(i+1)] = '\n';	//extra newline for easier reading
+	disp[78*(i+1)+1] = 0;	//null terminator
 	return disp;
 }
 
@@ -209,7 +215,12 @@ void logToFile(struct Plane buf[], int bufsize, FILE *save)
 		}
 		else
 			fputc(',', save);
-		fputs(ctime(&buf[i].lstUpd), save);
+		fprintf(save, "%zd\n", buf[i].lstUpd);
 	}
+	return;
+}
+
+void createImage(struct Plane buf[], int bufsize)
+{
 	return;
 }

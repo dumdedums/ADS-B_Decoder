@@ -74,3 +74,5 @@ void updateDisplay(struct Plane buf[], int bufsize);
 	They will probably run the same helper function.
 */
 void logToFile(struct Plane buf[], int bufsize, FILE *save);
+
+void createImage(struct Plane buf[], int bufsize);
