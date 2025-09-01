@@ -309,10 +309,7 @@ int getAirVel(const union AdsbFrame *frame, double *trk, double *spd, int *vr)
 			x = 1;		//IAS
 
 		if(frame->me.ava.as == 0)
-		{
 			x += 10;
-			goto INVALID_VEL;
-		}
 		*spd = (double)frame->me.ava.as - 1.;
 		if(frame->me.ava.st == 4)	//supersonic
 			*spd *= 4.;

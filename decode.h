@@ -60,7 +60,7 @@ int getAirPos(const union AdsbFrame *frame, double rlat, double rlng,
 	Returns 2 if speed invalid.
 	Returns 3 if ground track and speed invalid.
 
-	Track is a rounded set of degrees,
+	Track is a *not* rounded set of degrees,
 	the actual value only has a precision of 360/128,
 	or about 2.8 degrees anyway.
 
@@ -77,8 +77,8 @@ int getSurfPos(const union AdsbFrame *frame, double rlat, double rlng,
 	Returns 0 if speed is a ground speed.
 	Returns 1 if speed is IAS.
 	Returns 2 if speed is TAS.
-	Returns 3 if IAS and HDG not available.
-	Returns 4 if TAS and HDG not available.
+	Returns 3 if IAS, and HDG not available.
+	Returns 4 if TAS, and HDG not available.
 	Returns 5 + other codes if vertical rate unavailable.
 	(5: GS/NoVR, 6: IAS/NoVR ...)
 	Returns 10+ if speed/track not available.

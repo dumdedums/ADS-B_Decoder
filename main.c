@@ -4,6 +4,7 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <time.h>
 #include "adsb.h"
 #include "decode.h"
 #include "logger.h"
@@ -69,6 +70,7 @@ int main(int argc, char *argv[])
 	char f1call[9], f1type[8];
 	double f1lat, f1lng, f1trk, f1spd;
 	int f1alt, f1vr;
+	register enum PlaneFlags f1fl;
 
 	//cache size for planes
 	int cache = 10;
@@ -84,6 +86,7 @@ int main(int argc, char *argv[])
 
 	char debug = 0;
 	char isBinary = -1;
+	time_t lastLog;
 
 	int opt;
 	char *optstring = "rdcpbs";
@@ -153,6 +156,8 @@ int main(int argc, char *argv[])
 		else
 			logstream = fopen(filename, "r");
 
+		time(&lastLog);
+
 		while(fscanf(logstream, " *%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx"
 			"%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx;", &f1.frame[13],
 			&f1.frame[12], &f1.frame[11], &f1.frame[10],
@@ -188,11 +193,17 @@ int main(int argc, char *argv[])
 					break;
 
 				case 5: case 6: case 7: case 8:
-					if(getSurfPos(&f1, rlat, rlng, &f1trk, &f1spd,
-						&f1lat, &f1lng) != 0)
+					f1fl = ICAOFL | POSVALID | TRKVALID | SPDVALID;
+					switch(getSurfPos(&f1, rlat, rlng, &f1trk, &f1spd,
+						&f1lat, &f1lng))
 					{
-						if(debug)
-							printf("Grnd Track or Spd Invalid\n");
+					case 3:
+						f1fl -= TRKVALID;
+					case 2:
+						f1fl -= SPDVALID;
+						break;
+					case 1:
+						f1fl -= TRKVALID;
 					}
 					if(debug)
 						printf("Surface Position Message\nICAO: %X, "
@@ -202,15 +213,19 @@ int main(int argc, char *argv[])
 
 					logPlane(planes, cache, f1.icao, f1call,
 						f1type, f1lat, f1lng, f1trk, f1spd,
-						f1alt, f1vr, ICAOFL | POSVALID | TRKVALID | SPDVALID);
+						f1alt, f1vr, f1fl);
 					break;
 
 				case 9: case 10: case 11: case 12: case 13: case 14:
 				case 15: case 16: case 17: case 18: case 20: case 21:
 				case 22:
-					if(getAirPos(&f1, rlat, rlng, &f1alt, &f1lat,
-						&f1lng) != 0)
-						printf("No Alt Available\n");
+					f1fl = ICAOFL | POSVALID | ALTVALID;
+					switch(getAirPos(&f1, rlat, rlng,
+						&f1alt, &f1lat, &f1lng))
+					{
+					case 1:
+						f1fl -= ALTVALID;
+					}
 					if(debug)
 						printf("Aerial Position Message\nICAO: %X, "
 							"Altitude: %d, Position: %f, %f\n\n",
@@ -218,12 +233,58 @@ int main(int argc, char *argv[])
 
 					logPlane(planes, cache, f1.icao, f1call,
 						f1type, f1lat, f1lng, f1trk, f1spd,
-						f1alt, f1vr, ICAOFL | POSVALID | ALTVALID);
+						f1alt, f1vr, f1fl);
 					break;
 
 				case 19:
-					if(getAirVel(&f1, &f1trk, &f1spd, &f1vr) != 0)
-						printf("IAS or TAS Speed\n");
+					f1fl = ICAOFL | TRKVALID | SPDVALID | VERTVALID;
+					switch(getAirVel(&f1, &f1trk, &f1spd, &f1vr))
+					{
+						case 0:
+							break;
+						case 10:
+							f1fl -= TRKVALID;
+							f1fl -= SPDVALID;
+							break;
+						case 14:
+						case 13:
+							f1fl -= TRKVALID;
+						case 12:
+						case 11:
+							f1fl |= ICAOFL;
+							f1fl -= SPDVALID;
+							break;
+						case 15:
+							f1fl = ICAOFL;
+							break;
+						case 9:
+						case 8:
+							f1fl -= TRKVALID;
+						case 7:
+						case 6:
+							f1fl |= ICAOFL;
+						case 5:
+							f1fl -= VERTVALID;
+							break;
+						case 19:
+						case 18:
+							f1fl -= TRKVALID;
+						case 17:
+						case 16:
+							f1fl -= SPDVALID;
+							f1fl -= VERTVALID;
+							f1fl |= IASFL;
+							break;
+						case 3:
+						case 4:
+							f1fl -= TRKVALID;
+						case 1:
+						case 2:
+							f1fl |= IASFL;
+						default:
+							f1fl = 0;
+							break;
+					}
 					if(debug)
 						printf("Aerial Velocity Message\nICAO: %X, "
 							"Track: %f, Speed: %f, Vertical Rate: "
@@ -232,7 +293,7 @@ int main(int argc, char *argv[])
 
 					logPlane(planes, cache, f1.icao, f1call,
 						f1type, f1lat, f1lng, f1trk, f1spd,
-						f1alt, f1vr, ICAOFL | TRKVALID | SPDVALID | VERTVALID);
+						f1alt, f1vr, f1fl);
 					break;
 
 				//TODO: possible future handling of aircraft status
