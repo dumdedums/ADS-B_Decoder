@@ -3,7 +3,6 @@
 #include <string.h>
 
 #define CRC_GEN 0x1FFF409u	//generator for CRC parity check 'u' means unsigned
-#define PI 3.141592653589793	//Pi for converting radians to degrees
 #define Nz 15.			//num latitude zones
 
 /*
@@ -52,8 +51,8 @@ static int cprDecode(const union AdsbFrame *frame, double rlat, double rlng,
 	else if(*lat > 87. || *lat < -87.)
 		NL = 1;
 	else			//replace function with lookup table eventually
-		NL = (int)floor(2.*PI / acos(1. - (1.-cos(PI/(2.*Nz))) /
-			pow(cos(*lat * PI/180), 2.)));
+		NL = (int)floor(2.*M_PI / acos(1. - (1.-cos(M_PI/(2.*Nz))) /
+			pow(cos(*lat * M_PI/180), 2.)));
 
 	dlng = (360. / fmax(1., (double)NL - (double)frame->me.ab.f)) /
 		((double)tf * 3. + 1.);
@@ -297,7 +296,7 @@ int getAirVel(const union AdsbFrame *frame, double *trk, double *spd, int *vr)
 
 		//potential for errors in atan2 if velocities close to 0
 		//see atan2 documentation of math.h in c std lib
-		*trk = atan2((double)vew, (double)vsn) * 180. / PI;
+		*trk = atan2((double)vew, (double)vsn) * 180. * M_1_PI;
 		if(*trk < 0)
 			*trk += 360;	//atan2 returns val between -pi and pi
 	}

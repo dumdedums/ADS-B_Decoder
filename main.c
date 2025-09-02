@@ -19,14 +19,21 @@ static FILE *savestream = NULL;
 
 	This might be necessary because the default handling
 	for most termination signals closes all files
+
+	UCRT (Microsoft Universal C Runtime)
+	If compiling on MSYS2 or Visual Studio or other method that
+	uses UCRT instead of glibc, signals are handled in separate threads,
+	(don't interrupt program,) and the default handling of SIGINT
+	doesn't terminate the program.
+	Also they recommend not using printf in the handler.
 */
+#ifndef UCRT
 static void term_handler(int sig)
 {
 	static volatile sig_atomic_t terminating = 0;
 	printf("termination handler running\n");
 	if(terminating)
 		raise(sig);
-	terminating = 1;
 
 	//cleanup
 	if(logstream != NULL)
@@ -39,6 +46,7 @@ static void term_handler(int sig)
 	raise(sig);
 	return;			//doesn't occur
 }
+#endif
 
 /*
 	pipe_error
@@ -177,8 +185,11 @@ int main(int argc, char *argv[])
 			logstream = fopen(filename, "r");
 
 		//maybe use sigaction in the future?
+#ifndef UCRT
 		signal(SIGINT, term_handler);
 		signal(SIGTERM, term_handler);
+		signal(SIGHUP, term_handler);
+#endif
 		//signal(SIGHUP, term_handler);
 
 		time(&lastLog);
