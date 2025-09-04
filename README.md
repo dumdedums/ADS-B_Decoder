@@ -26,6 +26,25 @@ and lastly to be able to read the binary data from pipes or files along with int
 If no options are used the program will try and communicate with the RTL-SDR directly (Not yet implemented).
 Built using `make main`.
 
+If compiling on an MSYS2 platform run `make WIN=1` (WIN can actually equal any number but please define it)
+as signals in UCRT don't work in a way that even follows the C Standard remotely. This could also potentially be a bug in the MinGW toolchain
+I actually have no clue, but the point is signals in Windows are buggy and I'll have to figure out a workaround.
+Windows isn't the target platform anyway.
+
+To run the program you will also need the [RTL-SDR Blog Drivers](https://github.com/rtlsdrblog/rtl-sdr-blog). On Linux you need to build the drivers,
+but on Windows you can download them from the [releases](https://github.com/rtlsdrblog/rtl-sdr-blog/releases) page.
+For now the only way to run the program that works is to use the `-p` option, which takes data from the rtl\_adsb utility that comes with the drivers,
+simply run `./rtl_adsb | ./main -p -` after building the project, and both the project and the drivers are in the same folder.
+If you want to organize things better, put the drivers from the release/x64 folder in a "drivers" or "libraries" folder,
+and run `./drivers/rtl_adsb | ./main -p -`. Also keep in mind that in the Windows CMD, remove the `./` that is used in Bash terminals
+(`rtl_adsb | main -p -`). You can also run previously logged data from the rtl\_adsb utility by running `./main -p <file>` if you don't want to use live data.
+Keep in mind the timestamps will be incorrect as they are the timestamps for when the data was scanned into the program,
+ADS-B messages don't have timestamps because they are meant to be tracked live. I'm thinking of turning off timestamps when reading from a file,
+but in Linux files can be FIFOs, or named pipes, which is potentially live data. So it is possible to track live data from a file.
+
+When the `-b` feature gets written this program should be able to work with any SDR that is able to output its IQ samples to a stream,
+but currently I will focus on data visualization first.
+
 ## Why?
 There are much better tools out there to decode ADS-B signals from SDRs, take for example [readsb](https://github.com/Mictronics/readsb), so why create a new one?
 Well, I want to create this tool as a project to educate and train myself on decoding signals from an SDR in general, and I have an interest in both radios and airplanes.
@@ -55,9 +74,10 @@ not order of completion. Although there is a description of CPR (Compact Positio
 [here](https://shemesh.larc.nasa.gov/fm/papers/VSTTE2017-draft.pdf). (This paper only describes the airborne version of the algorithm.)
 
 ### Displaying the Data
-I am still unsure of how to impement this, but this component will parse the logs into an image (a map) of the locations of all the airplanes in the area.
-I will probably try and use [GMT (Generic Mapping Tools)](https://github.com/GenericMappingTools/gmt) to help me out with this.
-I currently only plan on creating static maps showing the most recent locations of each plane,
-the inputs of this component will include things such as showing *all* location logs of planes,
-or possibly paths if GMT makes this easy enough, along with a timeout so extremely old location data doesn't show up. Maybe even show locations for a time frame.
-
+I will be using [GMT (Generic Mapping Tools)](https://github.com/GenericMappingTools/gmt) to help me out with this.
+I currently only plan on creating static maps showing the most recent locations of each plane from the airplane cache,
+but I might use the log file or a separate store of info to track plane pathing.
+GMT allows underlaying of GEOTiff images, such as [FAA Flight Charts](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/).
+Since most planes are tracked in ADS-B are commercial flights I will probably overlay them on an IFR Chart.
+Since my setup in testing has a very short recieving range I will probably use the Chicago-Milwaukee Area map myself,
+or possibly even the Chicago Terminal Area Chart in the VFR chart section. Obviously you would need to get the chart for where you live.

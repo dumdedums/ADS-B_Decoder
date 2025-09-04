@@ -1,5 +1,5 @@
 CC = cc
-CFLAGS = -g
+CFLAGS = -g -v
 LDFLAGS = -lm
 
 #MS bitfields (default on Win) break packed structs
