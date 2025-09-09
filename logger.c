@@ -85,7 +85,7 @@ static char *formatDisplay(struct Plane buf[], int bufsize)
 	struct tm *ltime;
 	char *disp, temp[79], icao[7], call[9], type[7], lat[9], lng[9],
 		trk[7], spd[7], alt[7], vert[7], timestr[9];
-	disp = (char*)malloc(sizeof(char) * (74*(bufsize+1)+2));
+	disp = (char*)malloc(sizeof(char) * (78*(bufsize+1)+2));
 
 	sprintf(temp, "%6s %8s %6s %8s %8s %6s %6s %6s %6s %8s\n",
 		"ICAO", "CALLSIGN", "TYPE", "LATITUDE", "LNGITUDE", "TRACK",
