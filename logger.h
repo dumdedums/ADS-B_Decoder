@@ -76,3 +76,5 @@ void updateDisplay(struct Plane buf[], int bufsize);
 void logToFile(struct Plane buf[], int bufsize, FILE *save);
 
 void createImage(struct Plane buf[], int bufsize);
+
+int readLog(FILE *log, struct Plane **planes);

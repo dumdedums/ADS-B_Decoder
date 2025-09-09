@@ -114,10 +114,12 @@ int main(int argc, char *argv[])
 
 	char debug = 0;
 	char isBinary = -1;
+	char createImages = 0;
+	char logReaderMode = 0;
 	time_t lastLog;
 
 	int opt;
-	char *optstring = "rdcpbs";
+	char *optstring = "rdcpbsil";
 
 	//flag detection
 	while((opt = getopt(argc, argv, optstring)) != -1)
@@ -161,6 +163,15 @@ int main(int argc, char *argv[])
 			sscanf(argv[optind++], "%20s", savename);
 			printf("save file is %s\n", savename);
 			break;
+		case 'i':
+			createImages = 1;
+			printf("image creation mode on\n");
+			break;
+		case 'l':
+			sscanf(argv[optind++], "%20s", filename);
+			logReaderMode = 1;
+			printf("LOGREADER MODE\nfilename: %s\n", filename);
+			break;
 		case '?':
 			printf("%c is not a valid option\n", optopt);
 		}
@@ -171,7 +182,15 @@ int main(int argc, char *argv[])
 	if(savename[0] != 0)
 		savestream = fopen(savename, "a");
 
-	if(isBinary == -1)
+	if(logReaderMode)
+	{
+		if(savestream != NULL)
+			fclose(savestream);
+		free(planes);
+		logstream = fopen(filename, "r");
+		readLog(logstream, &planes);
+	}
+	else if(isBinary == -1)
 	{
 		//TODO: directly read from rtl-sdr using library
 		printf("not implemented yet\n");

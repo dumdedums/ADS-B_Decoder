@@ -8,9 +8,9 @@ void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 	char type[8], double lat, double lng, double trk, double spd,
 	int alt, int vert, enum PlaneFlags fl)
 {
-	register int i, oldest = 0;
+	int i, oldest = 0;
 	time_t now;
-	double diff, grtDiff = 0.;
+	time_t diff, grtDiff = 0;
 
 	time(&now);
 	for(i = 0;i < bufsize;i++)
@@ -22,7 +22,7 @@ void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 				oldest = i;
 				break;
 			}
-			diff = difftime(now, buf[i].lstUpd);
+			diff = now - buf[i].lstUpd;
 			if(diff > grtDiff)
 			{
 				grtDiff = diff;
@@ -36,8 +36,13 @@ void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 		}
 	}
 
-	buf[oldest].pflags |= fl;
-	buf[oldest].icao = icao;
+	if(buf[oldest].icao == icao)
+		buf[oldest].pflags |= fl;
+	else
+	{
+		buf[oldest].pflags = fl;
+		buf[oldest].icao = icao;
+	}
 	buf[oldest].lstUpd = now;
 
 	if(fl & IDENTVALID)
@@ -223,4 +228,67 @@ void logToFile(struct Plane buf[], int bufsize, FILE *save)
 void createImage(struct Plane buf[], int bufsize)
 {
 	return;
+}
+
+int readLog(FILE *log, struct Plane **planes)
+{
+	struct Plane *buf;
+	int i, j;
+	if(log == NULL)
+		return 0;
+	buf = malloc(sizeof(struct Plane) * 100);
+	i = 0;
+	while(1)
+	{
+		for(j = 0;j < 100;j++)
+		{
+			if(fscanf(log, " %x,", &buf[i*100+j].icao) == EOF)
+				goto EXIT_READLOG;
+			buf[i*100+j].pflags |= ICAOFL;
+
+			if(fscanf(log, "%8[A-Z0-9],%6[A-Z],",
+				buf[i*100+j].call, buf[i*100+j].type))
+				buf[i*100+j].pflags |= IDENTVALID;
+			else
+			{	//get rid of spare commas
+				getc(log);
+				getc(log);
+			}
+			if(fscanf(log, "%f,%f,",
+				&buf[i*100+j].lat, &buf[i*100+j].lng))
+				buf[i*100+j].pflags |= POSVALID;
+			else
+			{
+				getc(log);
+				getc(log);
+			}
+			if(fscanf(log, "%f,", &buf[i*100+j].trk))
+				buf[i*100+j].pflags |= TRKVALID;
+			else
+				getc(log);
+			if(fscanf(log, "%f,", &buf[i*100+j].spd))
+				buf[i*100+j].pflags |= SPDVALID;
+			else
+				getc(log);
+			if(fscanf(log, "%d,", &buf[i*100+j].alt))
+				buf[i*100+j].pflags |= ALTVALID;
+			else
+				getc(log);
+			if(fscanf(log, "%d,", &buf[i*100+j].vert))
+				buf[i*100+j].pflags |= VERTVALID;
+			else
+				getc(log);
+			fscanf(log, "%zd", &buf[i*100+j].lstUpd);
+		}
+		i++;
+		buf = realloc(buf, sizeof(struct Plane) * (i+1) * 100);
+	}
+	EXIT_READLOG:
+	*planes = buf;
+	//size of filled portion of buffer is:
+	//index of last part of buffer worked on (incomplete)
+	//if buffer is filled to exact multiple of 100,
+	//there are 100 extra unused spaces in buffer (neg side effect)
+	//there will always be extra unused spaces
+	return i*100+j;
 }
