@@ -9,8 +9,21 @@
 #include "decode.h"
 #include "logger.h"
 
+//Global settings
+char changeTimeOnPosition = 0;
+
+//files needed by multiple functions
 static FILE *logstream = NULL;
 static FILE *savestream = NULL;
+
+//variable used to terminate program
+static volatile sig_atomic_t terminating = 0;
+
+//settings needed by multiple functions
+static struct Plane *planes = NULL;
+int cache = 10;						//cache size for planes
+static char debug = 0;
+static double rlat = 41.978611, rlng = -87.904722;	//O'Hare is default pos
 
 /*
 	termination
@@ -27,26 +40,18 @@ static FILE *savestream = NULL;
 	doesn't terminate the program.
 	Also they recommend not using printf in the handler.
 */
-#ifndef UCRT
 static void term_handler(int sig)
 {
-	static volatile sig_atomic_t terminating = 0;
 	printf("termination handler running\n");
 	if(terminating)
 		raise(sig);
+	terminating = 1;
 
-	//cleanup
-	if(logstream != NULL)
-		fclose(logstream);
-	if(savestream != NULL)
-		fclose(savestream);
-
-	//termination
-	signal(sig, SIG_DFL);	//this should automatically done
-	raise(sig);
-	return;			//doesn't occur
+	//if standard term doesn't work change signal behaviour to default
+	//this means the 2nd time we ctrl+c the program gets killed
+	signal(sig, SIG_DFL);
+	return;
 }
-#endif
 
 /*
 	pipe_error
@@ -59,6 +64,162 @@ static void term_handler(int sig)
 	printf("pipe broken\n");
 	return;
 }*/
+
+static void handleMessage(const union AdsbFrame *f1)
+{
+	char f1call[9], f1type[8];
+	double f1lat, f1lng, f1trk, f1spd;
+	int f1alt, f1vr;
+	register enum PlaneFlags f1fl;
+
+	if((f1->df == 17 || f1->df == 18) &&	//ADS-B & TIS-B messages
+		parityCheck(f1) == 0)
+	{
+		if(debug)
+			printf("Uncorrupt Message Recieved DF: %d, TC: %d\n"
+				"Raw Data: %.2X%.2X%.2X%.2X%.2X%.2X%.2X%.2X"
+				"%.2X%.2X%.2X%.2X%.2X%.2X\n", f1->df, f1->me.id.tc,
+				f1->frame[13], f1->frame[12], f1->frame[11],
+				f1->frame[10], f1->frame[9], f1->frame[8],
+				f1->frame[7], f1->frame[6], f1->frame[5], f1->frame[4],
+				f1->frame[3], f1->frame[2], f1->frame[1],
+				f1->frame[0]);
+
+		switch(f1->me.id.tc)
+		{
+		case 1: case 2: case 3: case 4:
+			getIdent(f1, f1call, f1type);
+			if(debug)
+				printf("Identification Message\nICAO: %X, "
+					"Callsign: %s, Aircraft Type: %s\n\n",
+					f1->icao, f1call, f1type);
+
+			logPlane(planes, cache, f1->icao, f1call,
+				f1type, f1lat, f1lng, f1trk, f1spd,
+				f1alt, f1vr, ICAOFL | IDENTVALID);
+			break;
+
+		case 5: case 6: case 7: case 8:
+			f1fl = ICAOFL | POSVALID | TRKVALID | SPDVALID;
+			switch(getSurfPos(f1, rlat, rlng, &f1trk, &f1spd,
+				&f1lat, &f1lng))
+			{
+			case 3:
+				f1fl -= TRKVALID;
+			case 2:
+				f1fl -= SPDVALID;
+				break;
+			case 1:
+				f1fl -= TRKVALID;
+			}
+			if(debug)
+				printf("Surface Position Message\nICAO: %X, "
+					"Track: %f, Speed: %f, Position: "
+					"%f, %f\n\n",
+					f1->icao, f1trk, f1spd, f1lat, f1lng);
+
+			logPlane(planes, cache, f1->icao, f1call,
+				f1type, f1lat, f1lng, f1trk, f1spd,
+				f1alt, f1vr, f1fl);
+			break;
+
+		case 9: case 10: case 11: case 12: case 13: case 14:
+		case 15: case 16: case 17: case 18: case 20: case 21:
+		case 22:
+			f1fl = ICAOFL | POSVALID | ALTVALID;
+			switch(getAirPos(f1, rlat, rlng,
+				&f1alt, &f1lat, &f1lng))
+			{
+			case 1:
+				f1fl -= ALTVALID;
+			}
+			if(debug)
+				printf("Aerial Position Message\nICAO: %X, "
+					"Altitude: %d, Position: %f, %f\n\n",
+					f1->icao, f1alt, f1lat, f1lng);
+
+			logPlane(planes, cache, f1->icao, f1call,
+				f1type, f1lat, f1lng, f1trk, f1spd,
+				f1alt, f1vr, f1fl);
+			break;
+
+		case 19:
+			f1fl = ICAOFL | TRKVALID | SPDVALID | VERTVALID;
+			switch(getAirVel(f1, &f1trk, &f1spd, &f1vr))
+			{
+				case 0:
+					break;
+				case 10:
+					f1fl -= TRKVALID;
+					f1fl -= SPDVALID;
+					break;
+				case 14:
+				case 13:
+					f1fl -= TRKVALID;
+				case 12:
+				case 11:
+					f1fl |= ICAOFL;
+					f1fl -= SPDVALID;
+					break;
+				case 15:
+					f1fl = ICAOFL;
+					break;
+				case 9:
+				case 8:
+					f1fl -= TRKVALID;
+				case 7:
+				case 6:
+					f1fl |= ICAOFL;
+				case 5:
+					f1fl -= VERTVALID;
+					break;
+				case 19:
+				case 18:
+					f1fl -= TRKVALID;
+				case 17:
+				case 16:
+					f1fl -= SPDVALID;
+					f1fl -= VERTVALID;
+					f1fl |= IASFL;
+					break;
+				case 3:
+				case 4:
+					f1fl -= TRKVALID;
+				case 1:
+				case 2:
+					f1fl |= IASFL;
+				default:
+					f1fl = 0;
+					break;
+			}
+			if(debug)
+				printf("Aerial Velocity Message\nICAO: %X, "
+					"Track: %f, Speed: %f, Vertical Rate: "
+					"%d\n\n",
+					f1->icao, f1trk, f1spd, f1vr);
+
+			logPlane(planes, cache, f1->icao, f1call,
+				f1type, f1lat, f1lng, f1trk, f1spd,
+				f1alt, f1vr, f1fl);
+			break;
+
+		//TODO: possible future handling of aircraft status
+		default:
+			if(debug)
+				printf("Status Report\nICAO: %X\n\n", f1->icao);
+		}
+
+	}
+	else if(debug)
+		printf("untranslated: %.2X%.2X%.2X%.2X%.2X%.2X%.2X"
+			"%.2X%.2X%.2X%.2X%.2X%.2X%.2X\n\n",
+			f1->frame[13], f1->frame[12], f1->frame[11],
+			f1->frame[10], f1->frame[9], f1->frame[8],
+			f1->frame[7], f1->frame[6], f1->frame[5], f1->frame[4],
+			f1->frame[3], f1->frame[2], f1->frame[1],
+			f1->frame[0], f1->frame[1], f1->frame[0]);
+	return;
+}
 
 /*
 	main
@@ -95,13 +256,6 @@ static void term_handler(int sig)
 int main(int argc, char *argv[])
 {
 	union AdsbFrame f1;
-	char f1call[9], f1type[8];
-	double f1lat, f1lng, f1trk, f1spd;
-	int f1alt, f1vr;
-	register enum PlaneFlags f1fl;
-
-	//cache size for planes
-	int cache = 10;
 
 	//stream to read from
 	//can be a text file or potentially a named pipe
@@ -109,17 +263,13 @@ int main(int argc, char *argv[])
 	filename[0] = 0;
 	savename[0] = 0;
 
-	//O'Hare Airport as relative position, unless specified in args
-	double rlat = 41.978611, rlng = -87.904722;
-
-	char debug = 0;
 	char isBinary = -1;
-	char createImages = 0;
 	char logReaderMode = 0;
+	char createImages = 0;
 	time_t lastLog;
 
 	int opt;
-	char *optstring = "rdcpbsil";
+	char *optstring = "rdcpbsilx";
 
 	//flag detection
 	while((opt = getopt(argc, argv, optstring)) != -1)
@@ -172,12 +322,16 @@ int main(int argc, char *argv[])
 			logReaderMode = 1;
 			printf("LOGREADER MODE\nfilename: %s\n", filename);
 			break;
+		case 'x':
+			changeTimeOnPosition = 1;
+			printf("Will only change time on pos updates\n");
+			break;
 		case '?':
 			printf("%c is not a valid option\n", optopt);
 		}
 	}
 
-	struct Plane *planes = (struct Plane*)calloc(cache, sizeof(struct Plane));
+	planes = (struct Plane*)calloc(cache, sizeof(struct Plane));
 
 	if(savename[0] != 0)
 		savestream = fopen(savename, "a");
@@ -204,9 +358,9 @@ int main(int argc, char *argv[])
 			logstream = fopen(filename, "r");
 
 		//maybe use sigaction in the future?
-#ifndef UCRT
 		signal(SIGINT, term_handler);
 		signal(SIGTERM, term_handler);
+#ifndef UCRT
 		signal(SIGHUP, term_handler);
 #endif
 		//signal(SIGHUP, term_handler);
@@ -220,152 +374,8 @@ int main(int argc, char *argv[])
 			&f1.frame[5], &f1.frame[4], &f1.frame[3], &f1.frame[2],
 			&f1.frame[1], &f1.frame[0]) != EOF)
 		{
-			if((f1.df == 17 || f1.df == 18) &&	//ADS-B & TIS-B messages
-				parityCheck(&f1) == 0)
-			{
-				if(debug)
-					printf("Uncorrupt Message Recieved DF: %d, TC: %d\n"
-						"Raw Data: %.2X%.2X%.2X%.2X%.2X%.2X%.2X%.2X"
-						"%.2X%.2X%.2X%.2X%.2X%.2X\n", f1.df, f1.me.id.tc,
-						f1.frame[13], f1.frame[12], f1.frame[11],
-						f1.frame[10], f1.frame[9], f1.frame[8],
-						f1.frame[7], f1.frame[6], f1.frame[5], f1.frame[4],
-						f1.frame[3], f1.frame[2], f1.frame[1],
-						f1.frame[0]);
+			handleMessage(&f1);
 
-				switch(f1.me.id.tc)
-				{
-				case 1: case 2: case 3: case 4:
-					getIdent(&f1, f1call, f1type);
-					if(debug)
-						printf("Identification Message\nICAO: %X, "
-							"Callsign: %s, Aircraft Type: %s\n\n",
-							f1.icao, f1call, f1type);
-
-					logPlane(planes, cache, f1.icao, f1call,
-						f1type, f1lat, f1lng, f1trk, f1spd,
-						f1alt, f1vr, ICAOFL | IDENTVALID);
-					break;
-
-				case 5: case 6: case 7: case 8:
-					f1fl = ICAOFL | POSVALID | TRKVALID | SPDVALID;
-					switch(getSurfPos(&f1, rlat, rlng, &f1trk, &f1spd,
-						&f1lat, &f1lng))
-					{
-					case 3:
-						f1fl -= TRKVALID;
-					case 2:
-						f1fl -= SPDVALID;
-						break;
-					case 1:
-						f1fl -= TRKVALID;
-					}
-					if(debug)
-						printf("Surface Position Message\nICAO: %X, "
-							"Track: %f, Speed: %f, Position: "
-							"%f, %f\n\n",
-							f1.icao, f1trk, f1spd, f1lat, f1lng);
-
-					logPlane(planes, cache, f1.icao, f1call,
-						f1type, f1lat, f1lng, f1trk, f1spd,
-						f1alt, f1vr, f1fl);
-					break;
-
-				case 9: case 10: case 11: case 12: case 13: case 14:
-				case 15: case 16: case 17: case 18: case 20: case 21:
-				case 22:
-					f1fl = ICAOFL | POSVALID | ALTVALID;
-					switch(getAirPos(&f1, rlat, rlng,
-						&f1alt, &f1lat, &f1lng))
-					{
-					case 1:
-						f1fl -= ALTVALID;
-					}
-					if(debug)
-						printf("Aerial Position Message\nICAO: %X, "
-							"Altitude: %d, Position: %f, %f\n\n",
-							f1.icao, f1alt, f1lat, f1lng);
-
-					logPlane(planes, cache, f1.icao, f1call,
-						f1type, f1lat, f1lng, f1trk, f1spd,
-						f1alt, f1vr, f1fl);
-					break;
-
-				case 19:
-					f1fl = ICAOFL | TRKVALID | SPDVALID | VERTVALID;
-					switch(getAirVel(&f1, &f1trk, &f1spd, &f1vr))
-					{
-						case 0:
-							break;
-						case 10:
-							f1fl -= TRKVALID;
-							f1fl -= SPDVALID;
-							break;
-						case 14:
-						case 13:
-							f1fl -= TRKVALID;
-						case 12:
-						case 11:
-							f1fl |= ICAOFL;
-							f1fl -= SPDVALID;
-							break;
-						case 15:
-							f1fl = ICAOFL;
-							break;
-						case 9:
-						case 8:
-							f1fl -= TRKVALID;
-						case 7:
-						case 6:
-							f1fl |= ICAOFL;
-						case 5:
-							f1fl -= VERTVALID;
-							break;
-						case 19:
-						case 18:
-							f1fl -= TRKVALID;
-						case 17:
-						case 16:
-							f1fl -= SPDVALID;
-							f1fl -= VERTVALID;
-							f1fl |= IASFL;
-							break;
-						case 3:
-						case 4:
-							f1fl -= TRKVALID;
-						case 1:
-						case 2:
-							f1fl |= IASFL;
-						default:
-							f1fl = 0;
-							break;
-					}
-					if(debug)
-						printf("Aerial Velocity Message\nICAO: %X, "
-							"Track: %f, Speed: %f, Vertical Rate: "
-							"%d\n\n",
-							f1.icao, f1trk, f1spd, f1vr);
-
-					logPlane(planes, cache, f1.icao, f1call,
-						f1type, f1lat, f1lng, f1trk, f1spd,
-						f1alt, f1vr, f1fl);
-					break;
-
-				//TODO: possible future handling of aircraft status
-				default:
-					if(debug)
-						printf("Status Report\nICAO: %X\n\n", f1.icao);
-				}
-
-			}
-			else if(debug)
-				printf("untranslated: %.2X%.2X%.2X%.2X%.2X%.2X%.2X"
-					"%.2X%.2X%.2X%.2X%.2X%.2X%.2X\n\n",
-					f1.frame[13], f1.frame[12], f1.frame[11],
-					f1.frame[10], f1.frame[9], f1.frame[8],
-					f1.frame[7], f1.frame[6], f1.frame[5], f1.frame[4],
-					f1.frame[3], f1.frame[2], f1.frame[1],
-					f1.frame[0], f1.frame[1], f1.frame[0]);
 			//more efficient to do this in separate thread but whatever
 			//displays data every 5 seconds and writes to log file
 			if(difftime(time(NULL), lastLog) > 5.)
@@ -375,6 +385,8 @@ int main(int argc, char *argv[])
 				if(savestream)
 					logToFile(planes, cache, savestream);
 			}
+			if(terminating)
+				break;
 		}
 	}
 	else

@@ -24,6 +24,9 @@
 	Only reason calloc is used in main is so I don't have to individually
 	wipe pflags at start.
 */
+
+extern char changeTimeOnPosition;
+
 enum PlaneFlags {ICAOFL=1, IDENTVALID=2, POSVALID=4, TRKVALID=8,
 	SPDVALID=16, ALTVALID=32, VERTVALID=64, IASFL=128, BARFL=256};
 
@@ -75,6 +78,10 @@ void updateDisplay(struct Plane buf[], int bufsize);
 */
 void logToFile(struct Plane buf[], int bufsize, FILE *save);
 
+int readLog(FILE *log, struct Plane **planes);
+
+#ifdef MAPPING
 void createImage(struct Plane buf[], int bufsize);
 
-int readLog(FILE *log, struct Plane **planes);
+void DestroyGMTSession();
+#endif

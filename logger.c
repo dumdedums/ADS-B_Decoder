@@ -2,7 +2,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef MAPPING
+#include "gmt.h"
+#include "gmt_resources.h"
+#endif
+
 #include "logger.h"
+
+#define LINEWIDTH 78
+
+static void *API = NULL;
 
 void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 	char type[8], double lat, double lng, double trk, double spd,
@@ -43,7 +53,9 @@ void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 		buf[oldest].pflags = fl;
 		buf[oldest].icao = icao;
 	}
-	buf[oldest].lstUpd = now;
+
+	if(changeTimeOnPosition == 0)
+		buf[oldest].lstUpd = now;
 
 	if(fl & IDENTVALID)
 	{
@@ -54,6 +66,7 @@ void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 	{
 		buf[oldest].lat = lat;
 		buf[oldest].lng = lng;
+		buf[oldest].lstUpd = now;
 	}
 	if(fl & TRKVALID)
 	{
@@ -83,14 +96,14 @@ static char *formatDisplay(struct Plane buf[], int bufsize)
 {
 	int i;
 	struct tm *ltime;
-	char *disp, temp[79], icao[7], call[9], type[7], lat[9], lng[9],
+	char *disp, temp[LINEWIDTH], icao[7], call[9], type[7], lat[9], lng[9],
 		trk[7], spd[7], alt[7], vert[7], timestr[9];
-	disp = (char*)malloc(sizeof(char) * (78*(bufsize+1)+2));
+	disp = (char*)malloc(sizeof(char) * (LINEWIDTH*(bufsize+1)+2));
 
 	sprintf(temp, "%6s %8s %6s %8s %8s %6s %6s %6s %6s %8s\n",
 		"ICAO", "CALLSIGN", "TYPE", "LATITUDE", "LNGITUDE", "TRACK",
 		"SPEED", "ALT", "CLIMB", "TIME");
-	memcpy((void*)disp, temp, 78);
+	memcpy((void*)disp, temp, LINEWIDTH);
 
 	for(i = 0;i < bufsize;i++)
 	{
@@ -154,10 +167,10 @@ static char *formatDisplay(struct Plane buf[], int bufsize)
 		sprintf(temp, "%6s %8s %6s %8s %8s %6s %6s %6s %6s %8s\n",
 			icao, call, type, lat, lng, trk, spd, alt, vert,
 			timestr);
-		memcpy((void*)disp + 78*(i+1), temp, 78);
+		memcpy((void*)disp + LINEWIDTH*(i+1), temp, LINEWIDTH);
 	}
-	disp[78*(i+1)] = '\n';	//extra newline for easier reading
-	disp[78*(i+1)+1] = 0;	//null terminator
+	disp[LINEWIDTH*(i+1)] = '\n';	//extra newline for easier reading
+	disp[LINEWIDTH*(i+1)+1] = 0;	//null terminator
 	return disp;
 }
 
@@ -225,11 +238,6 @@ void logToFile(struct Plane buf[], int bufsize, FILE *save)
 	return;
 }
 
-void createImage(struct Plane buf[], int bufsize)
-{
-	return;
-}
-
 int readLog(FILE *log, struct Plane **planes)
 {
 	struct Plane *buf;
@@ -292,3 +300,19 @@ int readLog(FILE *log, struct Plane **planes)
 	//there will always be extra unused spaces
 	return i*100+j;
 }
+
+#ifdef MAPPING
+void createImage(struct Plane buf[], int bufsize)
+{
+	if(API == NULL)
+		API = GMT_Create_Session("PlanePlotter", 2, 0, NULL);
+	return;
+}
+
+void DestroyGMTSession()
+{
+	if(API != NULL)
+		GMT_Destroy_Session(API);
+	return;
+}
+#endif
