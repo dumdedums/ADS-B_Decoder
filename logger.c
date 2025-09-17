@@ -187,11 +187,17 @@ void logToFile(struct Plane buf[], int bufsize, FILE *save)
 {
 	int i;
 	char call[9];	//temp buffer
+	static time_t lastLog = 0;
 	if(save == NULL)
 		return;
 	//log in the file plane data
 	for(i = 0;i < bufsize;i++)
 	{
+		//don't log if plane hasn't been updated
+		//since the last time it's been logged
+		if(buf[i].lstUpd < lastLog)
+			continue;
+
 		if(buf[i].pflags & ICAOFL)
 			fprintf(save, "%.6X,", buf[i].icao);
 		else
@@ -235,6 +241,7 @@ void logToFile(struct Plane buf[], int bufsize, FILE *save)
 			fputc(',', save);
 		fprintf(save, "%zd\n", buf[i].lstUpd);
 	}
+	time(&lastLog);
 	return;
 }
 
