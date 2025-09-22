@@ -9,13 +9,10 @@ CFLAGS += -mno-ms-bitfields -DUCRT
 endif
 
 ifdef MAP
-ifdef WIN
-CFLAGS += -DMAPPING -I /c/programs/gmt6/include/gmt
-LDFLAGS += -L/c/programs/gmt6/lib -lgmt
-else
-#Figure out linux library locations
-CFLAGS += -DMAPPING
-endif
+MAPFLAGS != gmt-config --cflags
+MAPLIB != gmt-config --libs
+CFLAGS += -DMAPPING $(MAPFLAGS)
+LDFLAGS += $(MAPLIB)
 endif
 
 .PHONY: all clean

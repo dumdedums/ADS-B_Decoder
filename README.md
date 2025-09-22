@@ -45,6 +45,9 @@ but in Linux files can be FIFOs, or named pipes, which is potentially live data.
 When the `-b` feature gets written this program should be able to work with any SDR that is able to output its IQ samples to a stream,
 but currently I will focus on data visualization first.
 
+For the mapping features you must run `make MAP=1`. MAP can equal anything really it just has to be defined. You must make sure you have the libgmt-dev package installed though,
+as the libraries and gmt-config is needed to compile.
+
 ## Why?
 There are much better tools out there to decode ADS-B signals from SDRs, take for example [readsb](https://github.com/Mictronics/readsb), so why create a new one?
 Well, I want to create this tool as a project to educate and train myself on decoding signals from an SDR in general, and I have an interest in both radios and airplanes.
@@ -79,5 +82,5 @@ I currently only plan on creating static maps showing the most recent locations 
 but I might use the log file or a separate store of info to track plane pathing.
 GMT allows underlaying of GEOTiff images, such as [FAA Flight Charts](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/).
 Since most planes are tracked in ADS-B are commercial flights I will probably overlay them on an IFR Chart.
-Since my setup in testing has a very short recieving range I will probably use the Chicago-Milwaukee Area map myself,
-or possibly even the Chicago Terminal Area Chart in the VFR chart section. Obviously you would need to get the chart for where you live.
+# Yet Another ADS-B Decoder
+
