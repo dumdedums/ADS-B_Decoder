@@ -316,7 +316,7 @@ void createImage(struct Plane buf[], int bufsize)
 	return;
 }
 
-void DestroyGMTSession()
+void destroyGMTSession()
 {
 	if(API != NULL)
 		GMT_Destroy_Session(API);

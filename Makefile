@@ -8,7 +8,17 @@ ifdef WIN
 CFLAGS += -mno-ms-bitfields -DUCRT
 endif
 
-.PHONY: all clean WIN
+ifdef MAP
+ifdef WIN
+CFLAGS += -DMAPPING -I /c/programs/gmt6/include/gmt
+LDFLAGS += -L/c/programs/gmt6/lib -lgmt
+else
+#Figure out linux library locations
+CFLAGS += -DMAPPING
+endif
+endif
+
+.PHONY: all clean
 
 main: main.c decode.o logger.o adsb.h
 	$(CC) $(CFLAGS) main.c decode.o logger.o $(LDFLAGS) -o main

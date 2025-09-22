@@ -83,5 +83,5 @@ int readLog(FILE *log, struct Plane **planes);
 #ifdef MAPPING
 void createImage(struct Plane buf[], int bufsize);
 
-void DestroyGMTSession();
+void destroyGMTSession();
 #endif
