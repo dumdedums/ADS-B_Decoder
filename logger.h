@@ -25,7 +25,7 @@
 	wipe pflags at start.
 */
 
-extern char changeTimeOnPosition;
+extern int changeTimeOnPosition;
 
 enum PlaneFlags {ICAOFL=1, IDENTVALID=2, POSVALID=4, TRKVALID=8,
 	SPDVALID=16, ALTVALID=32, VERTVALID=64, IASFL=128, BARFL=256};

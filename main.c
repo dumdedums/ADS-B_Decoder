@@ -10,7 +10,7 @@
 #include "logger.h"
 
 //Global settings
-char changeTimeOnPosition = 0;
+int changeTimeOnPosition = 0;
 
 //files needed by multiple functions
 static FILE *logstream = NULL;
@@ -22,7 +22,7 @@ static volatile sig_atomic_t terminating = 0;
 //settings needed by multiple functions
 static struct Plane *planes = NULL;
 int cache = 10;						//cache size for planes
-static char debug = 0;
+static int debug = 0;
 static double rlat = 41.978611, rlng = -87.904722;	//O'Hare is default pos
 
 /*
@@ -263,9 +263,9 @@ int main(int argc, char *argv[])
 	filename[0] = 0;
 	savename[0] = 0;
 
-	char isBinary = -1;
-	char logReaderMode = 0;
-	char createImages = 0;
+	int isBinary = -1;
+	int logReaderMode = 0;
+	int createImages = 0;
 	time_t lastLog;
 
 	int opt;
