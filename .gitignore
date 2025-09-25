@@ -57,3 +57,4 @@ dkms.conf
 # specific
 makefile
 test
+main

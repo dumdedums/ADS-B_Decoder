@@ -11,6 +11,7 @@
 
 //Global settings
 int changeTimeOnPosition = 0;
+double rlat = 41.978611, rlng = -87.904722;	//O'Hare is default pos
 
 //files needed by multiple functions
 static FILE *logstream = NULL;
@@ -21,9 +22,8 @@ static volatile sig_atomic_t terminating = 0;
 
 //settings needed by multiple functions
 static struct Plane *planes = NULL;
-int cache = 10;						//cache size for planes
+int cache = 10;					//cache size for planes
 static int debug = 0;
-static double rlat = 41.978611, rlng = -87.904722;	//O'Hare is default pos
 
 /*
 	termination

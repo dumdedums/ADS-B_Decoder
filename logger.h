@@ -26,6 +26,7 @@
 */
 
 extern int changeTimeOnPosition;
+extern double rlat, rlng;
 
 enum PlaneFlags {ICAOFL=1, IDENTVALID=2, POSVALID=4, TRKVALID=8,
 	SPDVALID=16, ALTVALID=32, VERTVALID=64, IASFL=128, BARFL=256};
@@ -69,19 +70,44 @@ void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 	In the future we should use ncurses or some type of termio
 	instead of just printing to the console.
 */
-void updateDisplay(struct Plane buf[], int bufsize);
+void updateDisplay(const struct Plane buf[], int bufsize);
 
 /*
 	logToFile
 	Same thing as updateDisplay but to a file
 	They will probably run the same helper function.
 */
-void logToFile(struct Plane buf[], int bufsize, FILE *save);
+void logToFile(const struct Plane buf[], int bufsize, FILE *save);
 
+/*
+	readLog
+	Reads a log file and returns the planes.
+	TODO: TESTING
+*/
 int readLog(FILE *log, struct Plane **planes);
 
 #ifdef MAPPING
-void createImage(struct Plane buf[], int bufsize);
+/*
+	Mapping info
+	Dataset has a datatable, which has a datasegment per ICAO code.
+	Each record will have 3 Cols and a Text field.
+	The text field should contain the time (24hr format), ICAO code,
+	and callsign if it has it. If there is a callsign callsign can
+	replace ICAO code in text field.
+	LON  LAT  ALT  TEXT
+*/
+/*
+	createImage
+	On first run we must startup the GMT API
 
-void destroyGMTSession();
+	The Plane data can be the instantaneous data or a collection of
+	data from the past (although duplicates should be removed).
+*/
+void createImage(const struct Plane buf[], const int bufsize);
+
+/*
+	endGMTSession
+	print out plot in final output format(s) and exit
+*/
+void endGMTSession();
 #endif

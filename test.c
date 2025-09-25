@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "adsb.h"
 #include "decode.h"
+#include "logger.h"
 
 int main()
 {
@@ -188,6 +189,10 @@ int main()
 		"Track: %f, Speed: %f, Vertical Rate: %d\n",
 		(unsigned int)f42.df, (unsigned int)f42.ca, (unsigned int)f42.icao,
 		(unsigned int)f42.pi, atrk2, aspd2, vert2);
+
+#ifdef MAPPING
+	printf("\nGMT MAPPING TEST\n\n");
+#endif
 
 	return 0;
 }

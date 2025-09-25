@@ -12,7 +12,9 @@
 
 #define LINEWIDTH 78
 
+#ifdef MAPPING
 static void *API = NULL;
+#endif
 
 void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 	char type[8], double lat, double lng, double trk, double spd,
@@ -92,7 +94,7 @@ void logPlane(struct Plane buf[], int bufsize, int icao, char call[9],
 	formatDisplay
 	helper function for updating display and logging to file
 */
-static char *formatDisplay(struct Plane buf[], int bufsize)
+static char *formatDisplay(const struct Plane buf[], int bufsize)
 {
 	int i;
 	struct tm *ltime;
@@ -174,7 +176,7 @@ static char *formatDisplay(struct Plane buf[], int bufsize)
 	return disp;
 }
 
-void updateDisplay(struct Plane buf[], int bufsize)
+void updateDisplay(const struct Plane buf[], int bufsize)
 {
 	char *disp;
 	disp = formatDisplay(buf, bufsize);
@@ -183,7 +185,7 @@ void updateDisplay(struct Plane buf[], int bufsize)
 	return;
 }
 
-void logToFile(struct Plane buf[], int bufsize, FILE *save)
+void logToFile(const struct Plane buf[], int bufsize, FILE *save)
 {
 	int i;
 	char call[9];	//temp buffer
@@ -309,15 +311,152 @@ int readLog(FILE *log, struct Plane **planes)
 }
 
 #ifdef MAPPING
-void createImage(struct Plane buf[], int bufsize)
+
+#define GMTSETTINGS "MAP_GRID_CROSS_SIZE_PRIMARY 8p \
+MAP_TICK_LENGTH_PRIMARY 8p FONT_LABEL 12p MAP_FRAME_TYPE inside"
+#define SYMBOLSETTINGS "-C -G+z -Sd8p -Z"
+#define LINESETTINGS "-W"
+#define TEXTSETTINGS ""
+
+void createImage(const struct Plane buf[], int bufsize)
 {
+	//self explanatory options
+	static char coastOpts[200] = "";
+	char beginOpts[50];
+	//plane dataset
+	struct GMT_DATASET *planeData;
+	//param list for plane dataset
+	uint64_t params[3];
+	//virtual file
+	char PLANE_VFILE[GMT_VF_LEN];
+	//loop iterators and row/col amounts per segment
+	int i, j, icaoCnt;
+	int icaoList[bufsize];
+	int icaoMent[bufsize];
+	//used to make lines shorter, could be replaced with #define
+	register struct GMT_DATASEGMENT *S;
+
+	for(i = 0;i < bufsize;i++)
+		icaoList[i] = 0;
+	//first run of create image creates API
+	//and sets coastOpts
 	if(API == NULL)
-		API = GMT_Create_Session("PlanePlotter", 2, 0, NULL);
+	{
+		API = GMT_Create_Session("GMT_PlanePlot", 2, 0, NULL);
+		//set map projection settings including centering on rlng rlat
+		sprintf(coastOpts, "-R-60/60/-60/60+un -JL%f/%f/33/45/6i "
+			"-Bpa15mf1mg15m -Bsa1df5mg30m -BWeSn -Ia/deepskyblue "
+			"-Gtomato -Sdeepskyblue "
+			"-Ln.9/.1+w10n+c%f/%f+f+l\"nm\"",
+			rlng, rlat, rlng, rlng);
+	}
+
+	//make sure file name is unique so files aren't overwritten
+	sprintf(beginOpts, "GMT_PlanePlot%zd pdf", time(NULL));
+	GMT_Call_Module(API, "begin", 0, (void*)beginOpts);
+	GMT_Call_Module(API, "set", 0, (void*)GMTSETTINGS);
+
+	//make CPT
+	GMT_Call_Module(API, "makecpt", 0, (void*)"-Cgeo -T0/50000");
+
+	//draw coast, colorbar, and map scale
+	GMT_Call_Module(API, "coast", 0, (void*)coastOpts);
+	//must set frame to plain for colorbar to print correctly
+	GMT_Call_Module(API, "set", 0, (void*)"MAP_FRAME_TYPE plain");
+	GMT_Call_Module(API, "colorbar", 0,
+		(void*)"-Dn.9/.25+w3i -Bxa -By+l\"ft\"");
+
+	//Figure out amount of data segments
+	//(different airplane paths to be drawn)
+	for(i = 0;i < bufsize;i++)
+	{
+		//entries including and below here are unfilled
+		if(buf[i].pflags & ICAOFL == 0)
+			break;
+		//no position data
+		if(buf[i].pflags & POSVALID == 0)
+			continue;
+		//count amount of unique ICAOs
+		for(j = 0;j < bufsize;j++)
+		{
+			if(icaoList[j] == 0)
+			{
+				icaoList[j] = buf[i].icao;
+				icaoCnt++;
+				//times icao is mentioned
+				//becomes row amount
+				icaoMent[j] = 1;
+			}
+			else if(icaoList[j] == buf[i].icao)
+			{
+				icaoMent[j]++;
+				break;
+			}
+		}
+	}
+
+	params[0] = 1;
+	params[1] = icaoCnt;
+	params[2] = 0;		//num rows to be set individually
+	//unsure if text is included as a column, would be 4 with text
+	params[3] = 3;
+
+	planeData = GMT_Create_Data(API, GMT_IS_DATASET, GMT_IS_PLP,
+		GMT_WITH_STRINGS, params, NULL, NULL, 0, 0, NULL);
+
+	//allocate rows for each segment
+	//(each segment is one plane)
+	for(i = 0;i < icaoCnt;i++)
+	{
+		GMT_Alloc_Segment(API, GMT_WITH_STRINGS, icaoMent[i],
+			3, NULL, planeData->table[0]->segment[i]);
+		//reuse icaoMent later so reset
+		icaoMent[i] = 0;
+	}
+
+	//insert data into each segment
+	for(i = 0;i < bufsize;i++)
+	{
+		if(buf[i].pflags & ICAOFL == 0)
+			break;
+		if(buf[i].pflags & POSVALID == 0)
+			continue;
+		for(j = 0;j < icaoCnt;j++)
+		{
+			if(icaoList[j] == buf[i].icao)
+			{
+				S = planeData->table[0]->segment[j];
+				//set 3 data fields
+				S->data[0][icaoMent[j]] = buf[i].lng;
+				S->data[1][icaoMent[j]] = buf[i].lat;
+				if(buf[i].pflags & ALTVALID)
+					S->data[2][icaoMent[j]] = buf[i].alt;
+				else
+					S->data[2][icaoMent[j]] = 50000;
+				//set text field
+				icaoMent[j]++;
+				break;
+			}
+		}
+	}
+
+	//open vfile which is passed to the plotting modules
+	GMT_Open_VirtualFile(API, GMT_IS_DATASET, GMT_IS_PLP, GMT_IN | GMT_IS_REFERENCE, planeData, PLANE_VFILE);
+
+	//plot lines, then symbols, then text
+
+	//end module creates map
+	GMT_Call_Module(API, "end", 0, NULL);
+	if(GMT_Destroy_Data(API, &planeData))
+		printf("error destroying planeData\n");
 	return;
 }
 
-void destroyGMTSession()
+void endGMTSession()
 {
+	//TODO: free dataset
+	//destroying session might free it, but we should also free
+	//related plane list we will create.
 	if(API != NULL)
 		GMT_Destroy_Session(API);
 	return;
