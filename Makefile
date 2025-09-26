@@ -23,7 +23,7 @@ main: main.c decode.o logger.o adsb.h
 all: main test
 
 test: test.c decode.o logger.o adsb.h
-	$(CC) $(CFLAGS) test.c decode.o $(LDFLAGS) -o test
+	$(CC) $(CFLAGS) test.c decode.o logger.o $(LDFLAGS) -o test
 
 decode.o: decode.c decode.h adsb.h
 	$(CC) $(CFLAGS) -c decode.c

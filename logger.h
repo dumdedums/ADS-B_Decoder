@@ -102,6 +102,10 @@ int readLog(FILE *log, struct Plane **planes);
 
 	The Plane data can be the instantaneous data or a collection of
 	data from the past (although duplicates should be removed).
+
+	localtime may potentially be used at the same time as updateDisplay
+	if they are running on seperate threads. Keep this in mind if adding
+	multithreading.
 */
 void createImage(const struct Plane buf[], const int bufsize);
 

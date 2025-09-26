@@ -5,6 +5,9 @@
 #include "decode.h"
 #include "logger.h"
 
+int changeTimeOnPosition;
+double rlat, rlng;
+
 int main()
 {
 	union AdsbFrame f1;
@@ -192,6 +195,16 @@ int main()
 
 #ifdef MAPPING
 	printf("\nGMT MAPPING TEST\n\n");
+	int i;
+	struct Plane planes[5];
+	for(i = 0;i < 5;i++)
+		planes[i].pflags = 0;
+	//check for overflows
+	//should make blank image centered around
+	//rlat rlng
+	rlat = olat;
+	rlng = olng;
+	createImage(planes, 5);
 #endif
 
 	return 0;

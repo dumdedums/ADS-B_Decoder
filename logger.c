@@ -161,6 +161,8 @@ static char *formatDisplay(const struct Plane buf[], int bufsize)
 		else
 			strcpy(vert, "UNOWEN");
 
+		//WARNING: MIGHT NEED TO USE LOCK AROUND localtime
+		//IF createImage IS RUNNING IN SEP THREAD
 		ltime = localtime(&buf[i].lstUpd);
 		sprintf(timestr, "%.2d:%.2d:%.2d",
 			ltime->tm_hour, ltime->tm_min, ltime->tm_sec);
@@ -330,11 +332,13 @@ void createImage(const struct Plane buf[], int bufsize)
 	//virtual file
 	char PLANE_VFILE[GMT_VF_LEN];
 	//loop iterators and row/col amounts per segment
-	int i, j, icaoCnt;
+	int i, j, icaoCnt = 0;
 	int icaoList[bufsize];
 	int icaoMent[bufsize];
 	//used to make lines shorter, could be replaced with #define
 	register struct GMT_DATASEGMENT *S;
+	//gets the broken down time for each point
+	struct tm *pntTime;
 
 	for(i = 0;i < bufsize;i++)
 		icaoList[i] = 0;
@@ -371,10 +375,10 @@ void createImage(const struct Plane buf[], int bufsize)
 	for(i = 0;i < bufsize;i++)
 	{
 		//entries including and below here are unfilled
-		if(buf[i].pflags & ICAOFL == 0)
+		if((buf[i].pflags & ICAOFL) == 0)
 			break;
 		//no position data
-		if(buf[i].pflags & POSVALID == 0)
+		if((buf[i].pflags & POSVALID) == 0)
 			continue;
 		//count amount of unique ICAOs
 		for(j = 0;j < bufsize;j++)
@@ -386,6 +390,7 @@ void createImage(const struct Plane buf[], int bufsize)
 				//times icao is mentioned
 				//becomes row amount
 				icaoMent[j] = 1;
+				break;
 			}
 			else if(icaoList[j] == buf[i].icao)
 			{
@@ -417,9 +422,9 @@ void createImage(const struct Plane buf[], int bufsize)
 	//insert data into each segment
 	for(i = 0;i < bufsize;i++)
 	{
-		if(buf[i].pflags & ICAOFL == 0)
+		if((buf[i].pflags & ICAOFL) == 0)
 			break;
-		if(buf[i].pflags & POSVALID == 0)
+		if((buf[i].pflags & POSVALID) == 0)
 			continue;
 		for(j = 0;j < icaoCnt;j++)
 		{
@@ -434,6 +439,12 @@ void createImage(const struct Plane buf[], int bufsize)
 				else
 					S->data[2][icaoMent[j]] = 50000;
 				//set text field
+				//TODO: set up lock around localtime
+				//if createImage is in sep thread
+				pntTime = localtime(&buf[i].lstUpd);
+				sprintf(*S->text, "%.6X %.2d:%.2d:%.2d",
+					buf[i].icao, pntTime->tm_hour,
+					pntTime->tm_min, pntTime->tm_sec);
 				icaoMent[j]++;
 				break;
 			}
@@ -441,7 +452,8 @@ void createImage(const struct Plane buf[], int bufsize)
 	}
 
 	//open vfile which is passed to the plotting modules
-	GMT_Open_VirtualFile(API, GMT_IS_DATASET, GMT_IS_PLP, GMT_IN | GMT_IS_REFERENCE, planeData, PLANE_VFILE);
+	GMT_Open_VirtualFile(API, GMT_IS_DATASET, GMT_IS_PLP,
+		GMT_IN | GMT_IS_REFERENCE, planeData, PLANE_VFILE);
 
 	//plot lines, then symbols, then text
 
@@ -449,6 +461,7 @@ void createImage(const struct Plane buf[], int bufsize)
 	GMT_Call_Module(API, "end", 0, NULL);
 	if(GMT_Destroy_Data(API, &planeData))
 		printf("error destroying planeData\n");
+	GMT_Close_VirtualFile(API, PLANE_VFILE);
 	return;
 }
 
