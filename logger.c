@@ -314,9 +314,9 @@ int readLog(FILE *log, struct Plane **planes)
 
 #ifdef MAPPING
 
-#define GMTSETTINGS "MAP_GRID_CROSS_SIZE_PRIMARY 8p \
-MAP_TICK_LENGTH_PRIMARY 8p FONT_LABEL 12p MAP_FRAME_TYPE inside \
-PS_MEDIA letter PS_CONVERT A"
+#define GMTSETTINGS "GMT_THEME modern GMT_COMPATIBILITY 6 \
+MAP_GRID_CROSS_SIZE_PRIMARY 8p MAP_TICK_LENGTH_PRIMARY 8p FONT_LABEL 12p \
+MAP_FRAME_TYPE inside PS_CONVERT A,Dmaps"
 #define SYMBOLSETTINGS "-C -G+z -Sd8p -Z"
 #define LINESETTINGS "-W"
 #define TEXTSETTINGS ""
@@ -350,19 +350,21 @@ void createImage(const struct Plane buf[], int bufsize)
 		API = GMT_Create_Session("GMT_PlanePlot", 2, 0, NULL);
 		//set map projection settings including centering on rlng rlat
 		sprintf(coastOpts, "-R-60/60/-60/60+un -JL%f/%f/33/45/6i "
-			"-Bpa15mf1mg15m -Bsa1df5mg30m -BWeSn -Ia/deepskyblue "
-			"-Gtomato -Sdeepskyblue ",
-			//"-Ln.9/.1+w1k+c%f/%f+f+u",
+			"-Gtomato -Sdeepskyblue -Ia/deepskyblue "
+			//"-Ln.9/.1+w1k+c%f/%f+f+u ",
+			"-Bpa15mf1mg15m -Bsa1df5mg30m -BWeSn",
 			rlng, rlat, rlng, rlng);
 	}
 
 	//make sure file name is unique so files aren't overwritten
-	sprintf(beginOpts, "GMT_PlanePlot%zd pdf", time(NULL));
+	sprintf(beginOpts, "GMT_PlanePlot%zd", time(NULL));
 	GMT_Call_Module(API, "begin", 0, (void*)beginOpts);
 	GMT_Call_Module(API, "set", 0, (void*)GMTSETTINGS);
 
 	//make CPT
 	GMT_Call_Module(API, "makecpt", 0, (void*)"-Cgeo -T0/50000");
+
+	GMT_Call_Module(API, "defaults", 0, NULL);
 
 	//draw coast, colorbar, and map scale
 	GMT_Call_Module(API, "coast", 0, (void*)coastOpts);
@@ -460,12 +462,9 @@ void createImage(const struct Plane buf[], int bufsize)
 
 	//end module creates map
 	GMT_Call_Module(API, "end", 0, NULL);
+	GMT_Close_VirtualFile(API, PLANE_VFILE);
 	if(GMT_Destroy_Data(API, &planeData))
 		printf("error destroying planeData\n");
-
-	//usually an error closing this file?
-	//does "end" close it?
-	//GMT_Close_VirtualFile(API, PLANE_VFILE);
 	return;
 }
 
