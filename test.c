@@ -205,6 +205,7 @@ int main()
 	rlat = olat;
 	rlng = olng;
 	createImage(planes, 5);
+	endGMTSession();
 #endif
 
 	return 0;

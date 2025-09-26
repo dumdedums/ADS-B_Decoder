@@ -315,7 +315,8 @@ int readLog(FILE *log, struct Plane **planes)
 #ifdef MAPPING
 
 #define GMTSETTINGS "MAP_GRID_CROSS_SIZE_PRIMARY 8p \
-MAP_TICK_LENGTH_PRIMARY 8p FONT_LABEL 12p MAP_FRAME_TYPE inside"
+MAP_TICK_LENGTH_PRIMARY 8p FONT_LABEL 12p MAP_FRAME_TYPE inside \
+PS_MEDIA letter PS_CONVERT A"
 #define SYMBOLSETTINGS "-C -G+z -Sd8p -Z"
 #define LINESETTINGS "-W"
 #define TEXTSETTINGS ""
@@ -350,8 +351,8 @@ void createImage(const struct Plane buf[], int bufsize)
 		//set map projection settings including centering on rlng rlat
 		sprintf(coastOpts, "-R-60/60/-60/60+un -JL%f/%f/33/45/6i "
 			"-Bpa15mf1mg15m -Bsa1df5mg30m -BWeSn -Ia/deepskyblue "
-			"-Gtomato -Sdeepskyblue "
-			"-Ln.9/.1+w10n+c%f/%f+f+l\"nm\"",
+			"-Gtomato -Sdeepskyblue ",
+			//"-Ln.9/.1+w1k+c%f/%f+f+u",
 			rlng, rlat, rlng, rlng);
 	}
 
@@ -453,7 +454,7 @@ void createImage(const struct Plane buf[], int bufsize)
 
 	//open vfile which is passed to the plotting modules
 	GMT_Open_VirtualFile(API, GMT_IS_DATASET, GMT_IS_PLP,
-		GMT_IN | GMT_IS_REFERENCE, planeData, PLANE_VFILE);
+		GMT_IN, planeData, PLANE_VFILE);
 
 	//plot lines, then symbols, then text
 
@@ -461,7 +462,10 @@ void createImage(const struct Plane buf[], int bufsize)
 	GMT_Call_Module(API, "end", 0, NULL);
 	if(GMT_Destroy_Data(API, &planeData))
 		printf("error destroying planeData\n");
-	GMT_Close_VirtualFile(API, PLANE_VFILE);
+
+	//usually an error closing this file?
+	//does "end" close it?
+	//GMT_Close_VirtualFile(API, PLANE_VFILE);
 	return;
 }
 
