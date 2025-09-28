@@ -351,9 +351,9 @@ void createImage(const struct Plane buf[], int bufsize)
 		//set map projection settings including centering on rlng rlat
 		sprintf(coastOpts, "-R-60/60/-60/60+un -JL%f/%f/33/45/6i "
 			"-Gtomato -Sdeepskyblue -Ia/deepskyblue "
-			//"-Ln.9/.1+w1k+c%f/%f+f+u ",
+			"-Ln.9/.1+w10n+c%f/%f+f+l\"nm\" "
 			"-Bpa15mf1mg15m -Bsa1df5mg30m -BWeSn",
-			rlng, rlat, rlng, rlng);
+			rlng, rlat, rlng, rlat);
 	}
 
 	//make sure file name is unique so files aren't overwritten
@@ -371,7 +371,7 @@ void createImage(const struct Plane buf[], int bufsize)
 	//must set frame to plain for colorbar to print correctly
 	GMT_Call_Module(API, "set", 0, (void*)"MAP_FRAME_TYPE plain");
 	GMT_Call_Module(API, "colorbar", 0,
-		(void*)"-Dn.9/.25+w3i -Bxa -By+l\"ft\"");
+		(void*)"-DjMR+w3i -Bxa -By+l\"ft\"");
 
 	//Figure out amount of data segments
 	//(different airplane paths to be drawn)
