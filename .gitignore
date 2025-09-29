@@ -57,6 +57,8 @@ dkms.conf
 # data and program output
 *.csv
 *.pdf
+*.txt
+*.conf
 
 # specific
 makefile

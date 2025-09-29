@@ -315,7 +315,8 @@ int readLog(FILE *log, struct Plane **planes)
 #ifdef MAPPING
 
 #define GMTSETTINGS "GMT_THEME modern GMT_COMPATIBILITY 6 \
-MAP_GRID_CROSS_SIZE_PRIMARY 8p MAP_TICK_LENGTH_PRIMARY 8p FONT_LABEL 12p \
+MAP_GRID_CROSS_SIZE_PRIMARY 4p FONT_LABEL 12p FONT_ANNOT_PRIMARY 6p \
+FONT_ANNOT_SECONDARY 8p MAP_ANNOT_MIN_SPACING 0p  MAP_GRID_PEN_PRIMARY faint \
 MAP_FRAME_TYPE inside PS_CONVERT A,Dmaps"
 #define SYMBOLSETTINGS "-C -G+z -Sd8p -Z"
 #define LINESETTINGS "-W"
@@ -349,10 +350,10 @@ void createImage(const struct Plane buf[], int bufsize)
 	{
 		API = GMT_Create_Session("GMT_PlanePlot", 2, 0, NULL);
 		//set map projection settings including centering on rlng rlat
-		sprintf(coastOpts, "-R-60/60/-60/60+un -JL%f/%f/33/45/6i "
+		sprintf(coastOpts, "-R-30/30/-30/30+un -JL%f/%f/33/45/6i "
 			"-Gtomato -Sdeepskyblue -Ia/deepskyblue "
-			"-Ln.9/.1+w10n+c%f/%f+f+l\"nm\" "
-			"-Bpa15mf1mg15m -Bsa1df5mg30m -BWeSn",
+			"-Ln.9/.1+w5n+c%f/%f+f+l\"nm\" "
+			"-Bpa5mf1mg5m -Bsa15mf5mg15m -BWeSn",
 			rlng, rlat, rlng, rlat);
 	}
 
@@ -364,12 +365,14 @@ void createImage(const struct Plane buf[], int bufsize)
 	//make CPT
 	GMT_Call_Module(API, "makecpt", 0, (void*)"-Cgeo -T0/50000");
 
-	GMT_Call_Module(API, "defaults", 0, NULL);
+	//for debugging gmt config settings
+	//GMT_Call_Module(API, "defaults", 0, NULL);
 
 	//draw coast, colorbar, and map scale
 	GMT_Call_Module(API, "coast", 0, (void*)coastOpts);
 	//must set frame to plain for colorbar to print correctly
-	GMT_Call_Module(API, "set", 0, (void*)"MAP_FRAME_TYPE plain");
+	GMT_Call_Module(API, "set", 0, (void*)"MAP_FRAME_TYPE plain "
+		"FONT_ANNOT_PRIMARY 8p");
 	GMT_Call_Module(API, "colorbar", 0,
 		(void*)"-DjMR+w3i -Bxa -By+l\"ft\"");
 
