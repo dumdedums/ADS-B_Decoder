@@ -205,6 +205,17 @@ int main()
 	rlat = olat;
 	rlng = olng;
 	createImage(planes, 5);
+	printf("Finished Empty Map\nTesting Single Plane Multiple Points\n");
+	logPlane(planes, 5, 0x1, NULL, NULL, rlat, rlng, 0, 0, 1000, 0,
+		ICAOFL | POSVALID | ALTVALID);
+	planes[1].pflags = ICAOFL | POSVALID | ALTVALID;
+	planes[1].icao = 1;
+	planes[1].lat = rlat + 0.0833333;		//5nm north
+	planes[1].lng = rlng;
+	planes[1].alt = 5000;
+	planes[1].lstUpd = planes[0].lstUpd + 10;	//doesn't really matter
+	createImage(planes, 5);
+	printf("Finished Single Plane Two Points\n");
 	endGMTSession();
 #endif
 
