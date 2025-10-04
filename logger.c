@@ -318,7 +318,7 @@ int readLog(FILE *log, struct Plane **planes)
 MAP_GRID_CROSS_SIZE_PRIMARY 4p FONT_LABEL 12p FONT_ANNOT_PRIMARY 6p \
 FONT_ANNOT_SECONDARY 8p MAP_ANNOT_MIN_SPACING 0p  MAP_GRID_PEN_PRIMARY faint \
 MAP_FRAME_TYPE inside PS_CONVERT A,Dmaps"
-#define SYMBOLSETTINGS "-Sd10p -W"
+#define SYMBOLSETTINGS "-W -Sd1i -V"
 #define LINESETTINGS "-Wthinnest"
 #define TEXTSETTINGS ""
 
@@ -351,7 +351,7 @@ void createImage(const struct Plane buf[], int bufsize)
 	//and sets coastOpts
 	if(API == NULL)
 	{
-		API = GMT_Create_Session("GMT_PlanePlot", 2, 0, NULL);
+		API = GMT_Create_Session("GMT_PlanePlot", 2, GMT_SESSION_RUNMODE, NULL);
 		//set map projection settings including centering on rlng rlat
 		sprintf(coastOpts, "-R-30/30/-30/30+un -JL%f/%f/33/45/6i "
 			"-Gtomato -Sdeepskyblue -Ia/deepskyblue "
@@ -412,8 +412,7 @@ void createImage(const struct Plane buf[], int bufsize)
 	params[0] = 1;
 	params[1] = icaoCnt;
 	params[2] = 0;		//num rows to be set individually
-	//unsure if text is included as a column, would be 4 with text
-	params[3] = 3;
+	params[3] = 3;		//num cols (normally 3)
 
 	planeData = GMT_Create_Data(API, GMT_IS_DATASET, GMT_IS_PLP,
 		/*GMT_WITH_STRINGS*/0, params, NULL, NULL, 0, 0, NULL);
@@ -449,11 +448,13 @@ void createImage(const struct Plane buf[], int bufsize)
 					S->data[2][icaoMent[j]] = buf[i].alt;
 				else
 					S->data[2][icaoMent[j]] = 50000;
-				/*//set text field
+				/*
 				//TODO: set up lock around localtime
 				//if createImage is in sep thread
 				pntTime = localtime(&buf[i].lstUpd);
-				sprintf(*S->text, "%.6X %.2d:%.2d:%.2d",
+				//string is length of icao code + timestamp + 1
+				S->text[j] = malloc(sizeof(char) * 16);
+				sprintf(S->text[j], "%.6X %.2d:%.2d:%.2d",
 					buf[i].icao, pntTime->tm_hour,
 					pntTime->tm_min, pntTime->tm_sec);*/
 				icaoMent[j]++;
@@ -481,6 +482,14 @@ void createImage(const struct Plane buf[], int bufsize)
 	//destroy data to prevent memory leak
 	//vfile must be closed before planeData destroyed
 	GMT_Close_VirtualFile(API, plane_vfile);
+	//free all text strings allocated
+	/*for(i = 0;i < icaoCnt;i++)
+	{
+		S = planeData->table[0]->segment[i];
+		for(j = 0;j < icaoMent[i];j++)
+			free(S->text[j]);
+	}*/
+	//destroy GMT allocated data
 	if(GMT_Destroy_Data(API, &planeData))
 		printf("error destroying planeData\n");
 	return;
